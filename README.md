@@ -8,7 +8,8 @@ We will use this repo for research and development.
 
 # Requirements
 
-*  Test 1: Learning single parameter (sigma) from image blurring
+*  Test 1: Create simple regression pipeline
+*  Test 2: Learning single parameter (sigma) from image blurring
 > Note: Assuming to use a pretrained network for classification (we remove the classifier and keep the feature extractor), we'd need to create a small set in order to train the (new) regression Linear layer.
 
 ## Useful Links
