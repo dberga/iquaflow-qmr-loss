@@ -13,8 +13,8 @@ We will use this repo for research and development.
 
 ## Useful Links
 
-[Regression with Pytorch](https://medium.com/@benjamin.phillips22/simple-regression-with-neural-networks-in-pytorch-313f06910379)
-[Blurring with Scikit-Image](https://datacarpentry.org/image-processing/06-blurring/)
+* [Regression with Pytorch](https://medium.com/@benjamin.phillips22/simple-regression-with-neural-networks-in-pytorch-313f06910379)
+* [Blurring with Scikit-Image](https://datacarpentry.org/image-processing/06-blurring/)
 
 ## Install NVIDIA driver (440)
 ```
