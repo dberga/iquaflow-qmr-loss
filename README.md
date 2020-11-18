@@ -10,16 +10,19 @@ We will use this repo for research and development.
 
 *  Test 1: Create simple regression pipeline
 *  Test 2: Learning single parameter (sigma) from image blurring
-> Note: Try crop instead of resize
-> Change network
+> *  Note: Assuming to use a pretrained network for classification (we remove the classifier and keep the feature extractor), we'd need to create a small set in order to train the (new) regression Linear layer.
+> *  To do: Try crop instead of resize
+> *  To do: Change network (try dilated)
 *  Test 3: Change regressor for classification (every X decimal values)
-> Note: Assuming to use a pretrained network for classification (we remove the classifier and keep the feature extractor), we'd need to create a small set in order to train the (new) regression Linear layer.
 * Test 4: Read USGS, INRIA, XView datasets
 
 ## Useful Links
 
 * [Regression with Pytorch](https://medium.com/@benjamin.phillips22/simple-regression-with-neural-networks-in-pytorch-313f06910379)
 * [Blurring with Scikit-Image](https://datacarpentry.org/image-processing/06-blurring/)
+* [Dilated Network](https://medium.com/@vaibhaw.vipul/building-a-dilated-convnet-in-pytorch-f7c1496d9bf5)
+* [Pytorch Transforms in single image](https://discuss.pytorch.org/t/applying-transforms-to-a-single-image/56254)
+* [Autograd loss problem](https://stackoverflow.com/questions/64513183/pytorch-not-updating-weights-when-using-autograd-in-loss-function)
 
 ## Install NVIDIA driver (440)
 ```
