@@ -7,6 +7,10 @@ import torch.nn.functional as F
 import torch.utils.data as Data
 import torchvision.models as models
 import matplotlib.pyplot as plt
+def binary(x, bits):
+    mask = 2**torch.arange(bits).to(x.device, x.dtype)
+    return x.unsqueeze(-1).bitwise_and(mask).ne(0).byte()
+    return torch.tensor(binary, dtype=torch.uint8)
 #matplotlib inline
 import sys
 import numpy as np
@@ -67,25 +71,24 @@ net.fc = torch.nn.Linear(512, NUM_REG)
 #net.classifier=nn.Linear(512, num_classes)
 # print(net)  # net architecture
 optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
-loss_func = torch.nn.MSELoss() #CrossEntropyLoss(), BCEWithLogitsLoss(), MSELoss() 
-y = y.float()
+criterion = torch.nn.BCEWithLogitsLoss() #CrossEntropyLoss(), BCEWithLogitsLoss(), MSELoss() 
+sig = torch.nn.Sigmoid()
 
-#my_images = []
-#fig, ax = plt.subplots(figsize=(12,7))
-
+target=binary(y,NUM_REG).float()
 print("Target=")
-print(y)
+print(target)
 
 # train the network
 for t in range(200): #epoch
     #for b in range(len(x)): #batch (bs=1 image per batch)
 
     prediction = net(x)     # input x and predict based on x, [b,:,:,:]
+    pred = sig(prediction)
     #pred=prediction # 1 output case
-    pred_r=[prediction[i,yreg[i]] for i in range(prediction.shape[0])]
-    pred=torch.stack(pred_r)
-    loss = loss_func(pred,y) #yreg as alternative (classes)
-    #loss = loss_func(prediction.squeeze(), y)
+    #pred_r=[prediction[i,yreg[i]] for i in range(prediction.shape[0])]
+    #pred=torch.stack(pred_r)
+    loss = criterion(pred,target) #yreg as alternative (classes)
+    #loss = criterion(prediction.squeeze(), y)
 
     optimizer.zero_grad()   # clear gradients for next train
     loss.backward()         # backpropagation, compute gradients
