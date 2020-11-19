@@ -74,7 +74,8 @@ optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
 criterion = torch.nn.BCEWithLogitsLoss() #CrossEntropyLoss(), BCEWithLogitsLoss(), MSELoss() 
 sig = torch.nn.Sigmoid()
 
-target=binary(y,NUM_REG).float()
+#target=binary(y,NUM_REG).float() #binary encoding of y here
+target=torch.eye(NUM_REG)[yreg] #onehot encoding here
 print("Target=")
 print(target)
 
