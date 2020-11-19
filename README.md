@@ -32,7 +32,7 @@ sudo apt-get install nvidia-driver-440
 
 ## Install Torch Environment and dependencies (CUDA 10.2)
 ```
-conda create -n satellogic python=3.5 
+conda create -n satellogic python=3.7 
 conda install -n satellogic pytorch torchvision python-graphviz matplotlib glob2 xlrd pillow numpy scipy scikit-image intel-openmp mkl cudatoolkit=10.2 -c pytorch
 pip install git+https://github.com/bodleian/image-processing.git
 ```
