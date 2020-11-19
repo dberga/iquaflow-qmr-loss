@@ -64,7 +64,7 @@ x.requires_grad=True
 
 
 #net = Net(n_feature=1, n_hidden=10, n_output=1)     # define the network
-net = models.resnet18() #pretrained=True
+net = models.resnet18(pretrained=True)
 net.fc = torch.nn.Linear(512, NUM_REG)
 #net = models.alexnet()
 #net = models.vgg16()
