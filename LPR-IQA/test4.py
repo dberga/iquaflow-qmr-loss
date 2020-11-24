@@ -32,16 +32,16 @@ FILENAMES = [filename for filename in os.listdir(PATH[0])]
 NUM_CROPS = 32
 NUM_REG = 5 #number of regression params. to predict
 
+np.random.seed(1)
+random.seed(1)
+rng = torch.manual_seed(1)    # reproducible
+
 # Transforms
 tCROP = transforms.Compose([transforms.RandomCrop(size=(RESIZE[0],RESIZE[1])),])
 tGAUSSIAN = [transforms.Compose([transforms.GaussianBlur(kernel_size=(7,7), sigma=SIGMAS[idx]),]) for idx in range(len(SIGMAS))]
 
 x=[]
 y=[]
-np.random.seed(1)
-random.seed(1)
-torch.manual_seed(1)    # reproducible
-
 # Read image
 for idx in range(len(FILES)):
     filename = FILES[idx]
@@ -51,9 +51,9 @@ for idx in range(len(FILES)):
     image_tensor=transforms.functional.to_tensor(image).unsqueeze_(0)
     print("Preprocessing ["+str(idx+1)+"/"+str(len(FILES))+"] "+FILENAMES[idx])
     for gidx in range(len(SIGMAS)):
-        preproc_image=tGAUSSIAN[gidx](image_tensor)
+        gaussian_image=tGAUSSIAN[gidx](image_tensor)
         for cidx in range(NUM_CROPS):
-            preproc_image=tCROP(preproc_image)
+            preproc_image=tCROP(gaussian_image)
             save_image(preproc_image,path_debug+filename_noext+"_blur"+"_sigma"+str(SIGMAS[gidx])+"_rcrop_"+str(cidx+1)+".png")
             x.append(preproc_image)
             y.append(torch.tensor(SIGMAS[gidx], dtype=torch.long))
