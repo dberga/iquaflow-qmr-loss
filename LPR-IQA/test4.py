@@ -20,31 +20,36 @@ if not os.path.exists(path_debug):
     os.mkdir(path_debug)
 
 SIGMAS = [2.0,1.0,4.0,3.0]
-RESIZE = [224, 224] #crop size
-FILES = ["test.png"]
+RESIZE = [224, 224] #crop size 
+PATH = ["datasets/inria/AerialImageDataset/train/images/","datasets/inria/AerialImageDataset/test/images/"]
+#PATH = ["datasets/xview/train_images","datasets/xview/val_images"]
+FILES = [PATH[0]+filename for filename in os.listdir(PATH[0])]
 NUM_CROPS = 32
 NUM_REG = 5 #number of regression params. to predict
-filename = FILES[0]
 
-
-# Read image
-filename_noext=os.path.splitext(os.path.basename(filename))[0]
-#image = io.imread(fname=filename)
-image = Image.open(filename)
-image_tensor=transforms.functional.to_tensor(image).unsqueeze_(0)
-
+# Transforms
 tCROP = transforms.Compose([transforms.RandomCrop(size=(RESIZE[0],RESIZE[1])),])
 tGAUSSIAN = [transforms.Compose([transforms.GaussianBlur(kernel_size=(7,7), sigma=SIGMAS[idx]),]) for idx in range(len(SIGMAS))]
 
 x=[]
 y=[]
-for gidx in range(len(SIGMAS)):
-    preproc_image=tGAUSSIAN[gidx](image_tensor)
-    for cidx in range(NUM_CROPS):
-        preproc_image=tCROP(preproc_image)
-        save_image(preproc_image,path_debug+filename_noext+"_blur_"+"rcrop_"+str(cidx+1)+"_sigma"+str(SIGMAS[gidx])+".png")
-        x.append(preproc_image)
-        y.append(torch.tensor(SIGMAS[gidx], dtype=torch.long))
+
+# Read image
+for idx in range(len(FILES)):
+    filename = FILES[idx]
+    filename_noext=os.path.splitext(os.path.basename(filename))[0]
+    #image = io.imread(fname=filename)
+    image = Image.open(filename)
+    image_tensor=transforms.functional.to_tensor(image).unsqueeze_(0)
+    print("Loading ["+str(idx+1)+"/"+str(len(FILES))+"] "+filename)
+    for gidx in range(len(SIGMAS)):
+        preproc_image=tGAUSSIAN[gidx](image_tensor)
+        for cidx in range(NUM_CROPS):
+            preproc_image=tCROP(preproc_image)
+            save_image(preproc_image,path_debug+filename_noext+"_blur_"+"rcrop_"+str(cidx+1)+"_sigma"+str(SIGMAS[gidx])+".png")
+            x.append(preproc_image)
+            y.append(torch.tensor(SIGMAS[gidx], dtype=torch.long))
+
 x = torch.cat(x,dim=0)#torch.stack(x).float()
 y = torch.stack(y)
 ymin=torch.min(y)
