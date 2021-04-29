@@ -1,3 +1,2 @@
-**/*.png
 **/__pycache__/
 SRGAN-PyTorch/data/*.zip
