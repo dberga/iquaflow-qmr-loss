@@ -4,7 +4,7 @@ We will use this repo for research and development.
 
 # Contents
 
-(LPR-IQA) Learning Parameter Regression for Image Quality Assessment
+(LPR-IQA) Learning Parameter Regression for Image Quality Assessment\
 (SRGAN-PyTorch) Pytorch implementation of SRGAN algorithm
 
 ## Useful Links
