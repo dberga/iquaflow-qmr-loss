@@ -1,2 +1,5 @@
 **/__pycache__/
 SRGAN-PyTorch/data/*.zip
+SRGAN-PyTorch/data/*/
+CAR/models*
+CAR/adaptive_gridsampler/build/
