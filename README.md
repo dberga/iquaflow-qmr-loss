@@ -15,6 +15,7 @@ We will use this repo for research and development.
 * [Pytorch Transforms in single image](https://discuss.pytorch.org/t/applying-transforms-to-a-single-image/56254)
 * [Autograd loss problem](https://stackoverflow.com/questions/64513183/pytorch-not-updating-weights-when-using-autograd-in-loss-function)
 * [Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network](https://github.com/Lornatang/SRGAN-PyTorch)
+* [Learned Image Downscaling for Upscaling using Content Adaptive Resampler](https://github.com/sunwj/CAR)
 ## Install NVIDIA driver (440)
 ```
 sudo add-apt-repository ppa:graphics-drivers/ppa
