@@ -5,16 +5,7 @@ We will use this repo for research and development.
 # Contents
 
 (LPR-IQA) Learning Parameter Regression for Image Quality Assessment
-
-# Requirements
-
-*  Test 1: Create simple regression pipeline
-*  Test 2: Learning single parameter (sigma) from image blurring
-> *  Note: Assuming to use a pretrained network for classification (we remove the classifier and keep the feature extractor), we'd need to create a small set in order to train the (new) regression Linear layer.
-> *  To do: Try crop instead of resize
-> *  To do: Change network (try dilated)
-*  Test 3: Change regressor for classification (every X decimal values)
-* Test 4: Read USGS, INRIA, XView datasets
+(SRGAN-PyTorch) Pytorch implementation of SRGAN algorithm
 
 ## Useful Links
 
@@ -23,7 +14,7 @@ We will use this repo for research and development.
 * [Dilated Network](https://medium.com/@vaibhaw.vipul/building-a-dilated-convnet-in-pytorch-f7c1496d9bf5)
 * [Pytorch Transforms in single image](https://discuss.pytorch.org/t/applying-transforms-to-a-single-image/56254)
 * [Autograd loss problem](https://stackoverflow.com/questions/64513183/pytorch-not-updating-weights-when-using-autograd-in-loss-function)
-
+* [Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network](https://github.com/Lornatang/SRGAN-PyTorch)
 ## Install NVIDIA driver (440)
 ```
 sudo add-apt-repository ppa:graphics-drivers/ppa
