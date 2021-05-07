@@ -1,4 +1,6 @@
 **/__pycache__/
+**/*.png
+**/*.pth
 SRGAN-PyTorch/data/*.zip
 SRGAN-PyTorch/data/*/
 CAR/models*
