@@ -8,7 +8,7 @@ import numpy as np
 def save_tif(path_out_samples, fname, res, target_resolution=0.7,
              name=None, name_id='MSRN07',
              channel_order_out='rgb', 
-             compress=False, nodata=0, geo_info=True):
+             compress=False, nodata=0):
     """
     input is float normalized between 0 an 1.
     by default it taked input and rescale values to targert dtype (uint8).
