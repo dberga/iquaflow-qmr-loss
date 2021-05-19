@@ -8,13 +8,15 @@ import numpy as np
 def save_tif(path_out_samples, fname, res, target_resolution=0.7,
              name=None, name_id='MSRN07',
              channel_order_out='rgb', 
-             compress=False, nodata=0):
+             compress=False, nodata=0, geo_info=True):
     """
     input is float normalized between 0 an 1.
     by default it taked input and rescale values to targert dtype (uint8).
     
     """
-    
+    fmt_in=os.path.basename(fname).split('.')[1]
+    fmt_out="tif"
+
     if channel_order_out=='rgb':
         res_tmp = res.copy()
         res = res[:,:,::-1]
@@ -23,32 +25,33 @@ def save_tif(path_out_samples, fname, res, target_resolution=0.7,
         name=os.path.basename(fname).split('.')[0]
 
     if len(name_id)>0:
-        file_out = os.path.join(path_out_samples, f"TMP_{name}_{name_id}.tif")
+        file_out = os.path.join(path_out_samples, f"TMP_{name}_{name_id}."+fmt_out)
     else:
-        file_out = os.path.join(path_out_samples, f"TMP_{name}.tif")
-
-
-    cmd = f"gdalwarp -tr {target_resolution} {target_resolution} \"{fname}\" \"{file_out}\"" # -r lanczos
-    os.system(cmd)
-    with rasterio.open(file_out, "r") as src:
-
+        file_out = os.path.join(path_out_samples, f"TMP_{name}."+fmt_out)
+    
+    if fmt_in == "tif": # with geo data
+        cmd = f"gdalwarp -tr {target_resolution} {target_resolution} \"{fname}\" \"{file_out}\"" # -r lanczos
+        os.system(cmd)
+        src=rasterio.open(file_out, "r")
         H_t, W_t = src.shape
         res = cv2.resize(res, (W_t, H_t), cv2.INTER_AREA)
-
         print(res.shape, src.read().shape)
         meta = src.meta.copy()
         meta['dtype']=res.dtype.name
         meta['count']=f'{res.shape[-1]}'
         meta['nodata']=nodata
-
         if compress:
             meta['compress']='lzw'
-
         with rasterio.open(file_out.replace('TMP_', ''), "w", **meta) as dst:
             dst.write(res.transpose(2,0,1))
-    
-    # remove tmp file
-    os.system(f"rm {file_out}")
+        os.system(f"rm {file_out}")
+    else: # without geo data
+        res_factor=1/target_resolution
+        H_t=round(res.shape[0]*res_factor)
+        W_t=round(res.shape[1]*res_factor)
+        src=cv2.resize(res, (H_t, W_t), cv2.INTER_AREA)
+        cv2.imwrite(file_out.replace('TMP_',''),src[:,:,::-1])
+
     return file_out.replace('TMP_', '')
                 
 
