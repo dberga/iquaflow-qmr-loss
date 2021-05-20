@@ -66,6 +66,7 @@ def main():
     parser.add_argument("--gpu_device", type=str, default=None, help="flag to indicate the GPU device to use (i.e '0' to use device 0). By default None indicates CPU")
     parser.add_argument("--path_to_model_weights", type=str, default="model.pth", help="path to the model weights")
     parser.add_argument("--wind_size", type=int, default=512, help="window size GPU processing")
+    parser.add_argument("--res_output", type=float, default=0.7, help="resolution output m/px")
     opt = parser.parse_args()
     
     # Load model
@@ -77,7 +78,7 @@ def main():
     print(path_out)
 
     t00=time.time()
-    fout = process_file(model, path_out, compress=True, res_output=0.7,
+    fout = process_file(model, path_out, compress=True, res_output=opt.res_output,
                           wind_size=opt.wind_size, stride=opt.wind_size-10, 
                           batch_size=1, padding=5,filename=opt.filename)
 
