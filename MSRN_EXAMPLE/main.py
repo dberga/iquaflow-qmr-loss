@@ -73,7 +73,7 @@ def main():
     model = load_msrn_model(weights_path=opt.path_to_model_weights, cuda=opt.gpu_device) # use first GPU available
     
     # Path out
-    path_out = os.path.dirname(opt.filename)
+    path_out = "output/"
     
     print(path_out)
 
