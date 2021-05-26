@@ -6,6 +6,27 @@ from torch import nn
 from torch.utils import data
 import torch.nn.functional as F
 
+
+
+class noiseLayer_normal(nn.Module):
+    def __init__(self, noise_percentage, mean=0, std=0.2):
+        super(noiseLayer_normal, self).__init__()
+        self.n_scale = noise_percentage
+        self.mean=mean
+        self.std=std
+
+    def forward(self, x):
+        if self.training:
+            noise_tensor = torch.normal(self.mean, self.std, size=x.size()).to(x.get_device()) 
+            x = x + noise_tensor * self.n_scale
+        
+            mask_high = (x > 1.0)
+            mask_neg = (x < 0.0)
+            x[mask_high] = 1
+            x[mask_neg] = 0
+
+        return x
+
 class WindowsDataset_SR(data.Dataset):
     def __init__(self, nimg, wind_size=512, stride=480, scale=2):
         
@@ -58,7 +79,7 @@ class WindowsDataset_SR(data.Dataset):
 
 
 def inference_model(model, nimg, wind_size=512, stride=480, scale=2, 
-                    batch_size=1, data_parallel=False, padding=5, manager=None):
+                    batch_size=1, data_parallel=False, padding=5, manager=None, add_noise=None):
     """
     Run sliding window on data using the sisr model.
     
@@ -104,7 +125,10 @@ def inference_model(model, nimg, wind_size=512, stride=480, scale=2,
             x_in = sample['x_in'].to(device)
         else:
             x_in = sample['x_in'].cuda()
-
+            
+        if add_noise is not None:
+            add_noise_layer = noiseLayer_normal(add_noise, mean=0, std=0.2)
+            x_in = add_noise_layer(x_in)
         # add 5 pixel padding to avoid border effect
         x_in = F.pad(input=x_in, pad=(padding, padding, padding, padding), mode='reflect')
 
