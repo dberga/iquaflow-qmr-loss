@@ -38,25 +38,22 @@ def process_file(model, path_out, compress=True, target_res=0.7, source_res=0.3,
 
     H,W,C = nimg.shape
     sfactor = source_res/target_res #(origin_resolution/target_resolution)
-    alg_scale = 2
+    alg_scale = 2 # (todo?) this is default SR scale of model checkpoint? 
     
     # use same downscaling model as the one used during training!
     nimg = generate_low_resolution_image(nimg, scale=sfactor) # scale = (source resolution / target resolution)
 
-    print(nimg.shape)
     nimg = nimg.astype(np.float)
     nimg /= 255
 
     if nimg is not None:
-        print(nimg.shape)
         nimg = cv2.copyMakeBorder(nimg, padding, padding, padding, padding, 
                               cv2.BORDER_REPLICATE)
         # inference -> (todo?) replace nimg by modified (iq_tool_box modifiers) instead of doing that on inference, or either use torch transforms code from modifiers (blur, sharpness, etc)
         result = inference_model(model, nimg,
                                  wind_size=wind_size, stride=stride,
                                  scale=alg_scale, batch_size=batch_size, manager=manager, add_noise=None) # you can add noise during inference to get smoother results (try from 0.1 to 0.3; the higher the smoother effect!) 
-
-        print(result.shape)
+x
         result = result[2*padding:-2*padding,2*padding:-2*padding]
         result = cv2.convertScaleAbs(result, alpha=np.iinfo(np.uint8).max)
         result = result.astype(np.uint8)
