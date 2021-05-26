@@ -9,6 +9,7 @@ import time
 from bisect import bisect_right
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torchvision.models as models
 from PIL import Image
@@ -21,110 +22,94 @@ from iq_tool_box.datasets import (
     DSModifier_blur,
     DSModifier_resol,
     DSModifier_sharpness,
+    DSModifier_rer,
+    DSModifier_snr,
     DSWrapper,
 )
 
+def parse_params_cfg():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cfg_path", type=str, default="config.cfg")
+    cfg_path=parser.parse_args().cfg_path
 
-def parse_params_cfg(cfg_path="config.cfg", recursive=False):
-    if recursive is False:
-        default_config = configparser.ConfigParser()
-        default_config.read(cfg_path)
+    config = configparser.ConfigParser()
+    config.read(cfg_path)
 
-        aux_parser = argparse.ArgumentParser()
-        aux_parser.add_argument(
-            "--resume",
-            default=default_config["RUN"].getboolean("resume"),
-            action="store_true",
-        )
-        aux_parser.add_argument("--trainid", default=default_config["RUN"]["trainid"])
-        aux_parser.add_argument(
-            "--outputpath", default=default_config["PATHS"]["outputpath"]
-        )
-        run_args = aux_parser.parse_args()
+    parser.add_argument(
+        "--resume",
+        default=config["RUN"].getboolean("resume"),
+        action="store_true",
+    )
+    parser.add_argument("--trainid", default=config["RUN"]["trainid"])
+    
+    parser.add_argument(
+        "--outputpath", default=config["PATHS"]["outputpath"]
+    )
 
-        ckpt_cfg_path = os.path.join(run_args.outputpath, run_args.trainid, cfg_path)
+    parser.add_argument("--traindsinput", default=config["PATHS"]["traindsinput"])
+    parser.add_argument("--valds", default=config["PATHS"]["valds"])
+    parser.add_argument("--valdsinput", default=config["PATHS"]["valdsinput"])
+    try:
+        parser.add_argument(
+            "--modifier_params",
+            default=eval(config["HYPERPARAMS"]["modifier_params"]),
+        )  # for numpy commands (e.g. np.linspace(min,max,num_reg))
+    except Exception:
+        parser.add_argument(
+            "--modifier_params",
+            default=json.loads(config["HYPERPARAMS"]["modifier_params"]),
+        )  # dict format
+    parser.add_argument(
+        "--num_regs", default=json.loads(config["HYPERPARAMS"]["num_regs"])
+    )
+    parser.add_argument(
+        "--epochs", default=json.loads(config["HYPERPARAMS"]["epochs"])
+    )
+    parser.add_argument(
+        "--num_crops", default=json.loads(config["HYPERPARAMS"]["num_crops"])
+    )
+    parser.add_argument(
+        "--splits", default=json.loads(config["HYPERPARAMS"]["splits"])
+    )
+    parser.add_argument(
+        "--input_size", default=json.loads(config["HYPERPARAMS"]["input_size"])
+    )
+    parser.add_argument(
+        "--batch_size", default=json.loads(config["HYPERPARAMS"]["batch_size"])
+    )  # samples per batch (* NUM_CROPS * DEFAULT_SIGMAS). (eg. 2*4*4)
+    parser.add_argument("--lr", default=json.loads(config["HYPERPARAMS"]["lr"]))
+    parser.add_argument(
+        "--momentum", default=json.loads(config["HYPERPARAMS"]["momentum"])
+    )
+    parser.add_argument(
+        "--weight_decay", default=json.loads(config["HYPERPARAMS"]["weight_decay"])
+    )
+    parser.add_argument(
+        "--workers", default=json.loads(config["HYPERPARAMS"]["workers"])
+    )
+    parser.add_argument(
+        "--data_shuffle", default=config["HYPERPARAMS"]["data_shuffle"]
+    )
+    
+    parser.add_argument(
+        "--trainds", default=config["PATHS"]["trainds"]
+    )  # inria-aid, "xview", "ds_coco_dataset"
+    outputpath=parser.parse_args().outputpath
+    trainid=parser.parse_args().trainid
+    ckpt_folder = os.path.join(outputpath, trainid)
+    ckpt_cfg_path = os.path.join(ckpt_folder, os.path.basename(cfg_path))
 
-        if run_args.resume is True and os.path.exists(
-            ckpt_cfg_path
-        ):  # if resume read cfg file from cfg_path if provided
-            return parse_params_cfg(ckpt_cfg_path, True)
-        else:
-            return parse_params_cfg(cfg_path, True)
-
-    # extract cfg config
+    if not os.path.exists(outputpath):  # create main output folder
+        os.mkdir(outputpath)
+    if not os.path.exists(ckpt_folder):
+        os.mkdir(ckpt_folder)
+    if not os.path.exists(ckpt_cfg_path):  # new
+        shutil.copyfile(cfg_path, ckpt_cfg_path)
     else:
-        print(cfg_path)
-        config = configparser.ConfigParser()
-        config.read(cfg_path)
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--trainid", default=config["RUN"]["trainid"])
-        parser.add_argument(
-            "--resume", default=config["RUN"].getboolean("resume"), action="store_true"
-        )
-        parser.add_argument(
-            "--trainds", default=config["PATHS"]["trainds"]
-        )  # inria-aid, "xview", "ds_coco_dataset"
-        parser.add_argument("--traindsinput", default=config["PATHS"]["traindsinput"])
-        parser.add_argument("--valds", default=config["PATHS"]["valds"])
-        parser.add_argument("--valdsinput", default=config["PATHS"]["valdsinput"])
-        parser.add_argument("--outputpath", default=config["PATHS"]["outputpath"])
-        try:
-            parser.add_argument(
-                "--modifier_params",
-                default=eval(config["HYPERPARAMS"]["modifier_params"]),
-            )  # for numpy commands (e.g. np.linspace(min,max,num_reg))
-        except Exception:
-            parser.add_argument(
-                "--modifier_params",
-                default=json.loads(config["HYPERPARAMS"]["modifier_params"]),
-            )  # dict format
-        parser.add_argument(
-            "--num_regs", default=json.loads(config["HYPERPARAMS"]["num_regs"])
-        )
-        parser.add_argument(
-            "--epochs", default=json.loads(config["HYPERPARAMS"]["epochs"])
-        )
-        parser.add_argument(
-            "--num_crops", default=json.loads(config["HYPERPARAMS"]["num_crops"])
-        )
-        parser.add_argument(
-            "--splits", default=json.loads(config["HYPERPARAMS"]["splits"])
-        )
-        parser.add_argument(
-            "--input_size", default=json.loads(config["HYPERPARAMS"]["input_size"])
-        )
-        parser.add_argument(
-            "--batch_size", default=json.loads(config["HYPERPARAMS"]["batch_size"])
-        )  # samples per batch (* NUM_CROPS * DEFAULT_SIGMAS). (eg. 2*4*4)
-        parser.add_argument("--lr", default=json.loads(config["HYPERPARAMS"]["lr"]))
-        parser.add_argument(
-            "--momentum", default=json.loads(config["HYPERPARAMS"]["momentum"])
-        )
-        parser.add_argument(
-            "--weight_decay", default=json.loads(config["HYPERPARAMS"]["weight_decay"])
-        )
-        parser.add_argument(
-            "--workers", default=json.loads(config["HYPERPARAMS"]["workers"])
-        )
-        parser.add_argument(
-            "--data_shuffle", default=config["HYPERPARAMS"]["data_shuffle"]
-        )
+        os.remove(ckpt_cfg_path)  # overwrite old
+        shutil.copyfile(cfg_path, ckpt_cfg_path)
 
-        # save config in ckpt folder
-        run_args = parser.parse_args()
-        ckpt_folder = os.path.join(run_args.outputpath, run_args.trainid)
-        ckpt_cfg_path = os.path.join(ckpt_folder, cfg_path)
 
-        if not os.path.exists(run_args.outputpath):  # create main output folder
-            os.mkdir(run_args.outputpath)
-        if not os.path.exists(ckpt_folder):
-            os.mkdir(ckpt_folder)
-        if not ckpt_cfg_path == cfg_path:  # if not read from resume
-            if not os.path.exists(ckpt_cfg_path):  # new
-                shutil.copyfile(cfg_path, ckpt_cfg_path)
-            else:
-                os.remove(ckpt_cfg_path)  # overwrite old
-                shutil.copyfile(cfg_path, ckpt_cfg_path)
     return parser
 
 
@@ -152,6 +137,24 @@ def get_modifiers_from_params(modifier_params):
                     ds_modifiers.append(
                         DSModifier_sharpness(params={key: modifier_params[key][gidx]})
                     )
+                elif key == "rer":
+                    if not "dataset" in modifier_params.keys():
+                        ds_modifiers.append(
+                            DSModifier_rer(params={key: modifier_params[key][gidx], "dataset": "xview"})
+                        )
+                    else:
+                        ds_modifiers.append(
+                            DSModifier_rer(params={key: modifier_params[key][gidx],"dataset": modifier_params["dataset"]})
+                        )
+                elif key == "snr":
+                    if not "dataset" in modifier_params.keys():
+                        ds_modifiers.append(
+                            DSModifier_snr(params={key: modifier_params[key][gidx], "dataset": "xview"})
+                        )
+                    else:
+                        ds_modifiers.append(
+                            DSModifier_snr(params={key: modifier_params[key][gidx],"dataset": modifier_params["dataset"]})
+                        )
     return ds_modifiers
 
 
@@ -215,16 +218,16 @@ class Dataset(torch.utils.data.Dataset):
         self.mod_params = []
         self.crop_mod_params = []
         self.mod_resol = []
-
+        self.crop_size=crop_size
         #transforms
         self.tCROP = transforms.Compose(
             [
-                transforms.RandomCrop(size=(crop_size[0], crop_size[1])),
+                transforms.RandomCrop(size=(self.crop_size[0], self.crop_size[1])),
             ]
         )
         self.cCROP = transforms.Compose(
             [
-                transforms.CenterCrop(size=(crop_size[0], crop_size[1])),
+                transforms.CenterCrop(size=(self.crop_size[0], self.crop_size[1])),
             ]
         )
 
@@ -249,7 +252,12 @@ class Dataset(torch.utils.data.Dataset):
         if (
             len(self.lists_crop_files) > 0 and len(self.lists_mod_files) > 0
         ):  # cropped and modified
-            filename = self.lists_crop_files[idx]
+            try:
+                filename = self.lists_crop_files[idx]
+            except:
+                print(len(self.lists_crop_files))
+                print(str(idx)) #497, None, 498
+                print(self.lists_crop_files)
             # filename_noext = os.path.splitext(os.path.basename(filename))[0]
             image = Image.open(filename)
             image_tensor = transforms.functional.to_tensor(image)  # .unsqueeze_(0)
@@ -299,7 +307,7 @@ class Dataset(torch.utils.data.Dataset):
             mod_param = next(
                 iter(ds_modifier.params.values())
             )  # parameter value of modifier
-            print("Preprocessing files with " + mod_key + " " + str(mod_param))
+            print("Preprocessing dataset with modifiers: " + mod_key + " " + str(mod_param))
             ds_wrapper = DSWrapper(data_path=self.data_path, data_input=self.data_input)
             # ds_wrapper.data_input=self.data_input
             output_dir = self.data_path + "#" + ds_modifier.name
@@ -308,19 +316,27 @@ class Dataset(torch.utils.data.Dataset):
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
             if os.path.exists(split_dir):
-                shutil.rmtree(split_dir)
+                ## remove (overwrite)
+                # shutil.rmtree(split_dir) 
+                ## (or) reuse existing modified images
+                self.lists_mod_files.append(
+                    [
+                        split_dir + "/" + filename
+                        for filename in os.listdir(split_dir)
+                    ]
+                )
             else:
                 os.mkdir(split_dir)
-            ds_wrapper_modified = ds_modifier.modify_ds_wrapper(ds_wrapper=ds_wrapper)
-            # if 'test_images' in split_dir:
-            #    import pdb; pdb.set_trace()
-            os.listdir(ds_wrapper_modified.data_input)
-            self.lists_mod_files.append(
-                [
-                    ds_wrapper_modified.data_input + "/" + filename
-                    for filename in os.listdir(ds_wrapper_modified.data_input)
-                ]
-            )
+                ds_wrapper_modified = ds_modifier.modify_ds_wrapper(ds_wrapper=ds_wrapper)
+                # if 'test_images' in split_dir:
+                #    import pdb; pdb.set_trace()
+                os.listdir(ds_wrapper_modified.data_input)
+                self.lists_mod_files.append(
+                    [
+                        ds_wrapper_modified.data_input + "/" + filename
+                        for filename in os.listdir(ds_wrapper_modified.data_input)
+                    ]
+                )
             self.mod_keys.append(mod_key)
             self.mod_params.append(mod_param)
             # print(self.lists_mod_files[-1])
@@ -341,12 +357,12 @@ class Dataset(torch.utils.data.Dataset):
                     filename_noext = os.path.splitext(os.path.basename(filename))[0]
                     image = Image.open(filename)
                     image_tensor = transforms.functional.to_tensor(image).unsqueeze_(0)
+                    print("Cropping "+filename_noext+" with " + str(self.mod_keys[midx]) + " " + str(self.mod_params[midx]))
                     # if "train_images" in filename:
                     #     import pdb; pdb.set_trace()
                     for cidx in range(self.num_crops):
                         # print("Generating crop ("+str(cidx+1)+"/"+str(self.num_crops)+")")
-                        preproc_image = self.tCROP(image_tensor)
-                        crops_folder = os.path.dirname(filename) + "_crops"
+                        crops_folder = os.path.dirname(filename) +"_"+str(self.num_crops)+"crops"+str(self.crop_size[0])+"x"+str(self.crop_size[1])
                         if not os.path.exists(crops_folder):
                             os.mkdir(crops_folder)
                         filename_cropped = (
@@ -357,11 +373,14 @@ class Dataset(torch.utils.data.Dataset):
                             + str(cidx + 1)
                             + ".png"
                         )
+                        if not os.path.exists(filename_cropped): # else: reuse image if existing
+                            preproc_image = self.tCROP(image_tensor)
+                            save_image(preproc_image, filename_cropped)
                         self.lists_crop_files.append(filename_cropped)
                         self.crop_mod_keys.append(self.mod_keys[midx])
                         self.crop_mod_params.append(self.mod_params[midx])
                         self.mod_resol.append(image_tensor.shape[2:4])
-                        save_image(preproc_image, filename_cropped)
+                        
                         # print(self.lists_crop_files[-1])  # print last sample name
                     # os.remove(filename) # remove modded image to clean disk
         else:
@@ -370,9 +389,9 @@ class Dataset(torch.utils.data.Dataset):
                 filename_noext = os.path.splitext(os.path.basename(filename))[0]
                 image = Image.open(filename)
                 image_tensor = transforms.functional.to_tensor(image).unsqueeze_(0)
+                print("Cropping "+filename_noext)
                 for cidx in range(self.num_crops):
-                    preproc_image = self.tCROP(image_tensor)
-                    crops_folder = os.path.dirname(filename) + "_crops"
+                    crops_folder = os.path.dirname(filename) +"_"+str(self.num_crops)+"crops"+str(self.crop_size[0])+"x"+str(self.crop_size[1])
                     if not os.path.exists(crops_folder):
                         os.mkdir(crops_folder)
                     filename_cropped = (
@@ -385,7 +404,9 @@ class Dataset(torch.utils.data.Dataset):
                     )
                     self.lists_crop_files.append(filename_cropped)
                     self.mod_resol.append(image_tensor.shape[2:4])
-                    save_image(preproc_image, filename_cropped)
+                    if not os.path.exists(filename_cropped):
+                        preproc_image = self.tCROP(image_tensor)
+                        save_image(preproc_image, filename_cropped)
                     # print(self.lists_crop_files[-1])  # print last sample name
                 os.remove(filename)  # remove modded image to clean disk
 
@@ -439,15 +460,15 @@ class Regressor:
             self.modifier_params, self.num_regs
         )
 
-        crop_size=str(args.input_size)
+        self.crop_size=str(args.input_size)
         self.tCROP = transforms.Compose(
             [
-                transforms.RandomCrop(size=(crop_size[0], crop_size[1])),
+                transforms.RandomCrop(size=(self.crop_size[0], self.crop_size[1])),
             ]
         )  # define torch transform
         self.cCROP = transforms.Compose(
             [
-                transforms.CenterCrop(size=(crop_size[0], crop_size[1])),
+                transforms.CenterCrop(size=(self.crop_size[0], self.crop_size[1])),
             ]
         )  # define torch transform
 
@@ -516,6 +537,16 @@ class Regressor:
                 print("Found best model, saving checkpoint " + self.checkpoint_path)
                 torch.save(self.net, self.checkpoint_path)  # self.net.state_dict()
 
+                print("Plotting losses and precision in " + self.checkpoint_path)
+                plt.plot(train_losses, color='blue')
+                plt.plot(val_losses, color='orange')
+                plt.savefig(self.output_path+"/"+"losses.png")
+                plt.clf()
+                plt.plot(train_precs, color='blue')
+                plt.plot(val_precs, color='orange')
+                plt.savefig(self.output_path+"/"+"precision.png")
+                plt.clf()
+
             train_losses.append(train_loss)
             val_losses.append(val_loss)
             train_precs.append(train_prec)
@@ -582,7 +613,7 @@ class Regressor:
             # filename_noext = os.path.splitext(os.path.basename(filename))[0]
             image = Image.open(filename)
             image_tensor = transforms.functional.to_tensor(image).unsqueeze_(0)
-            if image_tensor.shape[2] != CROP_SIZE[0]:  # whole satellite image or crop?
+            if image_tensor.shape[2] != self.crop_size[0]:  # whole satellite image or crop?
                 xx = []
                 for cidx in range(self.num_crops):
                     # print("Generating crop ("+str(cidx+1)+"/"+str(self.num_crops)+")")
