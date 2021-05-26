@@ -53,7 +53,6 @@ def process_file(model, path_out, compress=True, target_res=0.7, source_res=0.3,
         result = inference_model(model, nimg,
                                  wind_size=wind_size, stride=stride,
                                  scale=alg_scale, batch_size=batch_size, manager=manager, add_noise=None) # you can add noise during inference to get smoother results (try from 0.1 to 0.3; the higher the smoother effect!) 
-x
         result = result[2*padding:-2*padding,2*padding:-2*padding]
         result = cv2.convertScaleAbs(result, alpha=np.iinfo(np.uint8).max)
         result = result.astype(np.uint8)
