@@ -31,6 +31,8 @@ parser.add_argument("--step", type=int, default=50, help="Sets the learning rate
 parser.add_argument("--gpus", default="1", type=str, help="gpu ids (default: 0)")
 parser.add_argument("--seed", default="12345", type=str, help="random seed")
 parser.add_argument("--path_out", default="msrn/experiment1_from1.2_to0.6/", type=str, help="path output")
+parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
+parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 
 
 class noiseLayer_normal(nn.Module):
@@ -75,8 +77,8 @@ def main():
 
 
     print("===> Loading datasets")
-    train_set = DatasetHR_LR("training", apply_color_jitter=opt.colorjitter)
-    validation_set = DatasetHR_LR("validation")
+    train_set = DatasetHR_LR("training", apply_color_jitter=opt.colorjitter, input_path=opt.trainds_input)
+    validation_set = DatasetHR_LR("validation", input_path=opt.valds_input)
 
     dataloaders ={
         'training': DataLoader(dataset=train_set, num_workers=opt.threads, \

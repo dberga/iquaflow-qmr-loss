@@ -1,6 +1,7 @@
 import glob
 import cv2
 import kornia
+import os
 
 from torchvision.transforms import ColorJitter
 import numpy as np
@@ -28,13 +29,20 @@ def generate_HR_LW_pair(img_array, crop_size=(256,256), scale=2, mode='training'
     
     
 class DatasetHR_LR(Dataset):
-    def __init__(self, mode='training',crop_size=(256,256), scale=2, apply_color_jitter=False):
+    def __init__(self, mode='training',crop_size=(256,256), scale=2, apply_color_jitter=False, input_path="/scratch/SISR/datasets/dataset1/60cm/training/"):
         super(DatasetHR_LR, self).__init__()
 
-        list_1 = np.array(glob.glob(f"/scratch/SISR/datasets/dataset1/60cm/{mode}/*.png"))
-        list_2 = np.loadtxt(f"/scratch/SISR/datasets/dataset2/60cm/{mode}_HR_crops_r0.6_512.txt", dtype='str')
-        self.list_images = np.concatenate([list_1, list_2]) 
-
+        valid_fmt=['.jpg','.jpeg','.png','.tif']
+        list_1=[]
+        for f in os.listdir(input_path):
+            fmt=os.path.splitext(f)[1]
+            if fmt.lower() not in fmt:
+                continue
+            list_1.append(os.path.join(input_path,f))
+        #list_1 = np.array(glob.glob(f"/scratch/SISR/datasets/dataset1/60cm/{mode}/*.png"))
+        #list_2 = np.loadtxt(f"/scratch/SISR/datasets/dataset2/60cm/{mode}_HR_crops_r0.6_512.txt", dtype='str')
+        #self.list_images = np.concatenate([list_1, list_2]) 
+        self.list_images = np.array(list_1)
         self.mode=mode
         self.crop_size=crop_size
         self.scale=scale
