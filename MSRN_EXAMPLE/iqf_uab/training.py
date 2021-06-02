@@ -30,7 +30,7 @@ parser.add_argument("--start_epoch", type=int, default=0, help="Number of thread
 parser.add_argument("--step", type=int, default=50, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=500")
 parser.add_argument("--gpus", default="1", type=str, help="gpu ids (default: 0)")
 parser.add_argument("--seed", default="12345", type=str, help="random seed")
-parser.add_argument("--path_out", default="msrn/experiment1_from1.2_to0.6/", type=str, help="path output")
+parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="path output")
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
@@ -67,7 +67,8 @@ def main():
     cuda = opt.cuda
     if cuda:
         print("=> use gpu id: '{}'".format(opt.gpus))
-        os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpus
+        os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"]=opt.gpus
         if not torch.cuda.is_available():
                 raise Exception("No GPU found or Wrong gpu id, please run without --cuda")
 
