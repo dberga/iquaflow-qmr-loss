@@ -63,12 +63,14 @@ def process_file(model, path_out, compress=True, target_res=0.7, source_res=0.3,
         name = os.path.basename(filename).split('.')[0]
         suffix = "_sr_"+str.replace(str(target_res),".","")+"m"
         cv2.imwrite(os.path.join(path_out, f"{name}{suffix}.{fmt_out}"), result)
+        #cv2.imwrite(path_out, result)
 
 
 def main():
 
     parser = argparse.ArgumentParser(description="Inference MSRN")
     parser.add_argument("--filename", default="data/input_inria03m.png", type=str, help="abs path to geotif")
+    parser.add_argument("--path_out", default="output/", type=str, help="abs path to outputs")
     parser.add_argument("--gpu_device", type=str, default='0', help="flag to indicate the GPU device to use (i.e '0' to use device 0). By default None indicates CPU")
     parser.add_argument("--path_to_model_weights", type=str, default="model.pth", help="path to the model weights")
     parser.add_argument("--wind_size", type=int, default=128, help="window size GPU processing")
@@ -80,7 +82,7 @@ def main():
     model = load_msrn_model(weights_path=opt.path_to_model_weights, cuda=opt.gpu_device) # use first GPU available
     
     # Path out
-    path_out = "output/"
+    path_out = opt.path_out
     
     print(path_out)
 
