@@ -56,6 +56,8 @@ parser.add_argument("--seed", default=666, type=int,
                     help="Seed for initializing training. (Default: 666)")
 parser.add_argument("--gpu", default=None, type=int,
                     help="GPU id to use.")
+parser.add_argument("--path_out", default="tests", type=str, metavar="PATH",
+                    help="Path to tests output")
 
 
 def main():
@@ -101,7 +103,7 @@ def main_worker(gpu, args):
 
     if args.hr:
         hr = process_image(Image.open(args.hr), args.gpu)
-        vutils.save_image(hr, os.path.join("tests", f"hr_{filename}"))
+        vutils.save_image(hr, os.path.join(args.path_out, f"hr_{filename}"))
         images = torch.cat([bicubic, sr, hr], dim=-1)
 
         value = iqa(sr, hr, args.gpu)
@@ -117,17 +119,17 @@ def main_worker(gpu, args):
     else:
         images = torch.cat([bicubic, sr], dim=-1)
 
-    vutils.save_image(lr, os.path.join("tests", f"lr_{filename}"))
-    vutils.save_image(bicubic, os.path.join("tests", f"bicubic_{filename}"))
-    vutils.save_image(sr, os.path.join("tests", f"sr_{filename}"))
-    vutils.save_image(images, os.path.join("tests", f"compare_{filename}"), padding=10)
+    vutils.save_image(lr, os.path.join(args.path_out, f"lr_{filename}"))
+    vutils.save_image(bicubic, os.path.join(args.path_out, f"bicubic_{filename}"))
+    vutils.save_image(sr, os.path.join(args.path_out, f"sr_{filename}"))
+    vutils.save_image(images, os.path.join(args.path_out, f"compare_{filename}"), padding=10)
 
 
 if __name__ == "__main__":
     print("##################################################\n")
     print("Run Testing Engine.\n")
 
-    create_folder("tests")
+    create_folder(args.path_out)
 
     logger.info("TestingEngine:")
     print("\tAPI version .......... 0.2.2")
