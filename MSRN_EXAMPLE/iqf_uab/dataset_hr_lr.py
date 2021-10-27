@@ -23,7 +23,7 @@ def generate_HR_LW_pair(img_array, crop_size=(256,256), scale=2, mode='training'
         img_crop = random_center_crop(img)
         
     kernel_tensor = kornia.filters.get_gaussian_kernel2d((kernel_size,kernel_size), (sigma, sigma))
-    blurred = kornia.filter2D(img_crop, kernel_tensor[None])
+    blurred = kornia.filters.filter2d(img_crop, kernel_tensor[None])
     blurred_resize = kornia.geometry.rescale(blurred, 1/scale, 'bilinear')
     return img_crop[0], blurred_resize[0]
     

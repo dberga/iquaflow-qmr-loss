@@ -14,6 +14,13 @@ from models.msrn import MSRN_Upscale
 from dataset_hr_lr import DatasetHR_LR
 from torch.utils.data import DataLoader
 from models.perceptual_loss import VGGPerceptualLoss
+from iq_tool_box.quality_metrics import (
+    GaussianBlurMetrics,
+    NoiseSharpnessMetrics,
+    RERMetrics,
+    ResolScaleMetrics,
+    SNRMetrics,
+)
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch MSRN")
@@ -24,6 +31,7 @@ parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--colorjitter", action="store_true", help="Use colorjitter?")
 parser.add_argument("--add_noise", action="store_true", help="Use cuda?")
 parser.add_argument("--vgg_loss", action="store_true", help="Use perceptual loss?")
+parser.add_argument("--regressor_loss", default=None, type=str, help="With regressor quality metric loss?")
 parser.add_argument("--resume", action="store_true", help="take last epoch available")
 parser.add_argument("--threads", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
 parser.add_argument("--start_epoch", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
@@ -98,12 +106,30 @@ def main():
     
     if opt.vgg_loss:
         global perceptual_loss
-
         perceptual_loss = VGGPerceptualLoss()
         perceptual_loss.eval()
         perceptual_loss.cuda()
         print("Using perceptual loss")
-    
+
+    if opt.regressor_loss is not None:
+        global quality_metric
+        global quality_metric_criterion
+        if opt.regressor_loss == "rer":
+            quality_metric = RERMetrics()
+        elif opt.regressor_loss == "snr":
+            quality_metric = SNRMetrics()
+        elif opt.regressor_loss == "sigma":
+            quality_metric = GaussianBlurMetrics()
+        elif opt.regressor_loss == "sharpness":
+            quality_metric = NoiseSharpnessMetrics()
+        elif opt.regressor_loss == "scale":
+            quality_metric = ResolScaleMetrics()    
+        quality_metric_criterion = nn.BCELoss()
+        quality_metric_criterion.eval()
+        if opt.cuda:
+            quality_metric_criterion.cuda()
+        print("Using regressor loss")
+
     print("===> Setting GPU")
     if cuda:
         model = model.cuda()
@@ -179,6 +205,12 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         if opt.vgg_loss:
             vgg_loss,_ = perceptual_loss(output, img_hr)
             loss = loss + 10*vgg_loss
+
+        if opt.regressor_loss is not None:
+            output_reg = quality_metric.regressor.net(output)
+            img_reg = quality_metric.regressor.net(img_hr)
+            regressor_loss = quality_metric_criterion(output,img_hr)
+            loss = loss + regressor_loss
 
         psnr = metric_psnr(img_hr, output)
         
