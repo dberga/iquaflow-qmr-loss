@@ -43,7 +43,6 @@ parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
 
-
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
         super(noiseLayer_normal, self).__init__()
@@ -126,8 +125,10 @@ def main():
             quality_metric = ResolScaleMetrics()    
         quality_metric_criterion = nn.BCELoss()
         quality_metric_criterion.eval()
+        quality_metric.regressor.net.eval()
         if opt.cuda:
             quality_metric_criterion.cuda()
+            quality_metric.regressor.net.cuda()
         print("Using regressor loss")
 
     print("===> Setting GPU")
@@ -207,11 +208,18 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             loss = loss + 10*vgg_loss
 
         if opt.regressor_loss is not None:
-            output_reg = quality_metric.regressor.net(output)
-            img_reg = quality_metric.regressor.net(img_hr)
-            regressor_loss = quality_metric_criterion(output,img_hr)
-            loss = loss + regressor_loss
-
+            try:
+                output_reg = quality_metric.regressor.net(output)
+                pred_reg = nn.Sigmoid()(output_reg)
+                img_reg = quality_metric.regressor.net(img_hr)
+                regressor_loss = quality_metric_criterion(pred_reg,img_reg.detach())
+                print("Original Loss")
+                print(loss)
+                loss = loss + regressor_loss
+                print("Regressor Loss")
+                print(regressor_loss)
+            except:
+                import pdb; pdb.set_trace()
         psnr = metric_psnr(img_hr, output)
         
         if mode=='training':
