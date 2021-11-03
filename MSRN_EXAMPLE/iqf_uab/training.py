@@ -42,6 +42,9 @@ parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="pa
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
+#todo: incluir peso
+#todo: binarizar gt para el bce
+#todo: ver histogramas de salida del regresor
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
@@ -67,7 +70,14 @@ def main():
     global opt, model
     opt = parser.parse_args()
     os.makedirs(opt.path_out, exist_ok=True)
-    writer = SummaryWriter(opt.path_out)
+    from datetime import datetime;
+    tt = datetime.now()
+    ttdate = tt.strftime("%m-%d-%Y_%H:%M:%S")
+    path_logs = os.path.join(opt.path_out,"run_"+ttdate)
+    path_checkpoints = os.path.join(opt.path_out, "checkpoint_"+ttdate)
+    os.makedirs(path_logs, exist_ok=True)
+    os.makedirs(path_checkpoints, exist_ok=True)
+    writer = SummaryWriter(path_logs)
 
     print(opt)
 
@@ -123,7 +133,7 @@ def main():
             quality_metric = NoiseSharpnessMetrics()
         elif opt.regressor_loss == "scale":
             quality_metric = ResolScaleMetrics()    
-        quality_metric_criterion = nn.BCELoss()
+        quality_metric_criterion = nn.BCELoss(reduction='mean') # nn.L1Loss(reduction='mean')
         quality_metric_criterion.eval()
         quality_metric.regressor.net.eval()
         if opt.cuda:
@@ -138,7 +148,6 @@ def main():
         
     # optionally resume from a checkpoint
     if opt.resume:
-        path_checkpoints = os.path.join(opt.path_out, "checkpoint/")
         list_epochs = [int(f.split('.')[0].split('_')[-1]) for f in os.listdir(path_checkpoints)]
         list_epochs.sort()
         last_epoch = list_epochs[-1]
@@ -165,7 +174,7 @@ def main():
         for mode in ['training', 'validation']:
             train(mode, dataloaders, optimizer, model, criterion, epoch, writer)
             if mode=='training':
-                save_checkpoint(model, epoch, opt.path_out)
+                save_checkpoint(model, epoch, path_checkpoints)
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
@@ -215,6 +224,8 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
                 regressor_loss = quality_metric_criterion(pred_reg,img_reg.detach())
                 print("Original Loss")
                 print(loss)
+                if regressor_loss < 0:
+                    regressor_loss = -regressor_loss * 0 #make 0 conserving tensor type
                 loss = loss + regressor_loss
                 print("Regressor Loss")
                 print(regressor_loss)
@@ -238,13 +249,16 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             writer.add_image(f'{mode}/lr', grid_lr, iteration)
             writer.add_image(f'{mode}/hr', grid_hr, iteration)
             writer.add_image(f'{mode}/pred', grid_pred, iteration)
-            
-    
-
-def save_checkpoint(model, epoch, path_out):
-    path_out = os.path.join(path_out, "checkpoint/")         
-    os.makedirs(path_out, exist_ok=True)
-    model_out_path = path_out + f"model_epoch_{epoch}.pth".format(epoch)
+            if opt.regressor_loss is not None:
+                writer.add_scalar(f'{mode}/REG_LOSS_{type(quality_metric_criterion).__name__}/', regressor_loss.item(), epoch*len(dataloader[mode])+iteration)
+                writer.add_scalar(f'{mode}/LOSS-REG_LOSS_{type(quality_metric_criterion).__name__}/', (loss-regressor_loss).item(), epoch*len(dataloader[mode])+iteration)
+                for i in range(len(pred_reg)):
+                    writer.add_histogram(f'{mode}/REG_pred_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(pred_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+                    writer.add_histogram(f'{mode}/REG_HR_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(img_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+                
+def save_checkpoint(model, epoch, path_checkpoints):       
+    os.makedirs(path_checkpoints, exist_ok=True)
+    model_out_path = path_checkpoints + f"model_epoch_{epoch}.pth".format(epoch)
     state = {"epoch": epoch ,"model": model}
     torch.save(state, model_out_path)
 
