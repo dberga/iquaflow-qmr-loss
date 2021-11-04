@@ -24,6 +24,7 @@ from iq_tool_box.quality_metrics import (
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch MSRN")
+parser.add_argument("--trainid", default=None, type=str, help="Training id to save tensorboard logs")
 parser.add_argument("--batchSize", type=int, default=16, help="training batch size")
 parser.add_argument("--nEpochs", type=int, default=1500, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate. Default=1e-3")
@@ -31,7 +32,9 @@ parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--colorjitter", action="store_true", help="Use colorjitter?")
 parser.add_argument("--add_noise", action="store_true", help="Use cuda?")
 parser.add_argument("--vgg_loss", action="store_true", help="Use perceptual loss?")
-parser.add_argument("--regressor_loss", default=None, type=str, help="With regressor quality metric loss?")
+parser.add_argument("--regressor_loss", default=None, type=str, help="Regressor quality metric")
+parser.add_argument("--regressor_criterion", default=None, type=str, help="Criterion for regressor quality metric loss")
+parser.add_argument("--regressor_loss_factor", type=float, default=1.0, help="Constant to multiply by loss")
 parser.add_argument("--resume", action="store_true", help="take last epoch available")
 parser.add_argument("--threads", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
 parser.add_argument("--start_epoch", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
@@ -42,6 +45,7 @@ parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="pa
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
+
 #todo: incluir peso
 #todo: binarizar gt para el bce
 #todo: ver histogramas de salida del regresor
@@ -73,7 +77,9 @@ def main():
     from datetime import datetime;
     tt = datetime.now()
     ttdate = tt.strftime("%m-%d-%Y_%H:%M:%S")
-    path_logs = os.path.join(opt.path_out,"run_"+ttdate)
+    if opt.trainid == None:
+        opt.trainid = "run_"+ttdate
+    path_logs = os.path.join(opt.path_out,opt.trainid)
     path_checkpoints = os.path.join(opt.path_out, "checkpoint_"+ttdate)
     os.makedirs(path_logs, exist_ok=True)
     os.makedirs(path_checkpoints, exist_ok=True)
@@ -132,8 +138,27 @@ def main():
         elif opt.regressor_loss == "sharpness":
             quality_metric = NoiseSharpnessMetrics()
         elif opt.regressor_loss == "scale":
-            quality_metric = ResolScaleMetrics()    
-        quality_metric_criterion = nn.BCELoss(reduction='mean') # nn.L1Loss(reduction='mean')
+            quality_metric = ResolScaleMetrics() 
+        if opt.regressor_criterion == None:
+            quality_metric_criterion = nn.BCELoss(reduction='mean') 
+        elif opt.regressor_criterion == "BCELoss":
+            quality_metric_criterion = nn.BCELoss(reduction='none')
+        elif opt.regressor_criterion == "BCELoss_mean":
+            quality_metric_criterion = nn.BCELoss(reduction='mean')
+        elif opt.regressor_criterion == "BCELoss_sum":
+            quality_metric_criterion = nn.BCELoss(reduction='sum')
+        elif opt.regressor_criterion == "L1Loss":
+            quality_metric_criterion = nn.L1Loss(reduction='none')
+        elif opt.regressor_criterion == "L1Loss_mean":
+            quality_metric_criterion = nn.L1Loss(reduction='mean')
+        elif opt.regressor_criterion == "L1Loss_sum":
+            quality_metric_criterion = nn.L1Loss(reduction='sum')
+        elif opt.regressor_criterion == "MSELoss":
+            quality_metric_criterion = nn.MSELoss(reduction='none')
+        elif opt.regressor_criterion == "MSELoss_mean":
+            quality_metric_criterion = nn.MSELoss(reduction='mean')
+        elif opt.regressor_criterion == "MSELoss_sum":
+            quality_metric_criterion = nn.MSELoss(reduction='sum')
         quality_metric_criterion.eval()
         quality_metric.regressor.net.eval()
         if opt.cuda:
@@ -226,6 +251,8 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
                 print(loss)
                 if regressor_loss < 0:
                     regressor_loss = -regressor_loss * 0 #make 0 conserving tensor type
+                #multiply by constant factor
+                regressor_loss = regressor_loss * opt.regressor_loss_factor    
                 loss = loss + regressor_loss
                 print("Regressor Loss")
                 print(regressor_loss)
