@@ -49,6 +49,7 @@ parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="pa
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
+parser.add_argument("--nockpt", action="store_true", help="Flag to not save checkpoint")
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
@@ -79,8 +80,9 @@ def main():
     if opt.trainid == None:
         opt.trainid = "run_"+ttdate
     path_logs = os.path.join(opt.path_out,opt.trainid)
-    path_checkpoints = os.path.join(opt.path_out, "checkpoint_"+ttdate)
+    path_checkpoints = os.path.join(path_logs, "checkpoint_"+opt.trainid)
     os.makedirs(path_logs, exist_ok=True)
+    os.makedirs(path_checkpoints, exist_ok=True)
     writer = SummaryWriter(path_logs)
     with open(os.path.join(path_logs,'config.txt'), 'w') as f: #save argparse params config in text
         json.dump(opt.__dict__,f,indent=2)
@@ -198,7 +200,7 @@ def main():
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         for mode in ['training', 'validation']:
             train(mode, dataloaders, optimizer, model, criterion, epoch, writer)
-            if mode=='training':
+            if (mode == 'training') & (opt.nockpt != True):
                 save_checkpoint(model, epoch, path_checkpoints)
 
 def adjust_learning_rate(optimizer, epoch):
