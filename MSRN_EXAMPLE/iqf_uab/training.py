@@ -1,4 +1,4 @@
-import argparse, os
+import argparse, os, json
 import sys
 import torch
 import math, random
@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import numpy as np
+from datetime import datetime;
 
 from metrics import PSNR
 from models.msrn import MSRN_Upscale
@@ -35,6 +36,9 @@ parser.add_argument("--vgg_loss", action="store_true", help="Use perceptual loss
 parser.add_argument("--regressor_loss", default=None, type=str, help="Regressor quality metric")
 parser.add_argument("--regressor_criterion", default=None, type=str, help="Criterion for regressor quality metric loss")
 parser.add_argument("--regressor_loss_factor", type=float, default=1.0, help="Constant to multiply by loss")
+parser.add_argument("--regressor_zeroclamp", action="store_true", help="Clamp negative regressor losses to 0")
+parser.add_argument("--regressor_onorm", action="store_true", help="Normalize to original loss mean")
+parser.add_argument("--regressor_gt2onehot", action="store_true", help="Make HR regressor outputs to binary, upon max")
 parser.add_argument("--resume", action="store_true", help="take last epoch available")
 parser.add_argument("--threads", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
 parser.add_argument("--start_epoch", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
@@ -45,10 +49,6 @@ parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="pa
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
-
-#todo: incluir peso
-#todo: binarizar gt para el bce
-#todo: ver histogramas de salida del regresor
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
@@ -74,7 +74,6 @@ def main():
     global opt, model
     opt = parser.parse_args()
     os.makedirs(opt.path_out, exist_ok=True)
-    from datetime import datetime;
     tt = datetime.now()
     ttdate = tt.strftime("%m-%d-%Y_%H:%M:%S")
     if opt.trainid == None:
@@ -82,8 +81,9 @@ def main():
     path_logs = os.path.join(opt.path_out,opt.trainid)
     path_checkpoints = os.path.join(opt.path_out, "checkpoint_"+ttdate)
     os.makedirs(path_logs, exist_ok=True)
-    os.makedirs(path_checkpoints, exist_ok=True)
     writer = SummaryWriter(path_logs)
+    with open(os.path.join(path_logs,'config.txt'), 'w') as f: #save argparse params config in text
+        json.dump(opt.__dict__,f,indent=2)
 
     print(opt)
 
@@ -242,22 +242,27 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             loss = loss + 10*vgg_loss
 
         if opt.regressor_loss is not None:
-            try:
-                output_reg = quality_metric.regressor.net(output)
-                pred_reg = nn.Sigmoid()(output_reg)
-                img_reg = quality_metric.regressor.net(img_hr)
-                regressor_loss = quality_metric_criterion(pred_reg,img_reg.detach())
-                print("Original Loss")
-                print(loss)
-                if regressor_loss < 0:
-                    regressor_loss = -regressor_loss * 0 #make 0 conserving tensor type
-                #multiply by constant factor
-                regressor_loss = regressor_loss * opt.regressor_loss_factor    
-                loss = loss + regressor_loss
-                print("Regressor Loss")
-                print(regressor_loss)
-            except:
-                import pdb; pdb.set_trace()
+            output_reg = quality_metric.regressor.net(output)
+            pred_reg = nn.Sigmoid()(output_reg)
+            img_reg = quality_metric.regressor.net(img_hr)
+            regressor_loss = quality_metric_criterion(pred_reg,img_reg.detach())
+            print("Original Loss")
+            print(loss)
+            # checking other hyperparams
+            if opt.regressor_gt2onehot == True:
+                img_reg_bin = torch.zeros_like(img_reg)
+                for idx, hot in enumerate(img_reg):
+                    img_reg_bin[idx,hot.argmax()] = torch.ones_like(img_reg_bin[idx,hot.argmax()])
+                regressor_loss = quality_metric_criterion(pred_reg,img_reg_bin.detach()) 
+            if (opt.regressor_zeroclamp == True) and (regressor_loss < 0):
+                regressor_loss = -regressor_loss * 0 #make 0 conserving tensor type
+            if opt.regressor_loss_factor != 1.0: #multiply by constant factor
+                regressor_loss = regressor_loss * opt.regressor_loss_factor
+            if opt.regressor_onorm == True:
+                regressor_loss = regressor_loss*torch.mean(loss_spatial)   
+            loss = loss + regressor_loss
+            print("Regressor Loss")
+            print(regressor_loss)
         psnr = metric_psnr(img_hr, output)
         
         if mode=='training':
@@ -285,7 +290,7 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
                 
 def save_checkpoint(model, epoch, path_checkpoints):       
     os.makedirs(path_checkpoints, exist_ok=True)
-    model_out_path = path_checkpoints + f"model_epoch_{epoch}.pth".format(epoch)
+    model_out_path = os.path.join(path_checkpoints + f"model_epoch_{epoch}.pth".format(epoch))
     state = {"epoch": epoch ,"model": model}
     torch.save(state, model_out_path)
 
