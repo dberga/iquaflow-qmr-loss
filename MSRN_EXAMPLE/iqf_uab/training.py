@@ -1,3 +1,7 @@
+#to do: encapsular funcions del regressor_loss i arguments argparse per utilitzar en altres integracions
+#to do: incluir summarywriter de tensorboard para iqf
+#to do: ejecutar con crops de 512 y 1024
+#to do: incluir patience para no depender del nEpochs
 import argparse, os, json
 import sys
 import torch
@@ -11,6 +15,7 @@ import numpy as np
 from datetime import datetime;
 
 from metrics import PSNR
+from metrics import SSIM
 from models.msrn import MSRN_Upscale
 from dataset_hr_lr import DatasetHR_LR
 from torch.utils.data import DataLoader
@@ -211,6 +216,7 @@ def adjust_learning_rate(optimizer, epoch):
 def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
     
     metric_psnr = PSNR()
+    metric_ssim = SSIM()
 
 #     lr = adjust_learning_rate(optimizer, epoch-1)
 #     print("learning rate", lr)
@@ -266,6 +272,7 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             print("Regressor Loss")
             print(regressor_loss)
         psnr = metric_psnr(img_hr, output)
+        ssim = metric_ssim(img_hr, output)
         
         if mode=='training':
             optimizer.zero_grad()
@@ -277,9 +284,10 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         grid_pred = torchvision.utils.make_grid(output)[[2, 1, 0],...]
 
         if iteration%10 == 0:
-            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item()))
+            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item()))
             writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
+            writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_image(f'{mode}/lr', grid_lr, iteration)
             writer.add_image(f'{mode}/hr', grid_hr, iteration)
             writer.add_image(f'{mode}/pred', grid_pred, iteration)
