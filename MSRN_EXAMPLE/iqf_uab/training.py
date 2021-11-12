@@ -1,7 +1,8 @@
-#to do: encapsular funcions del regressor_loss i arguments argparse per utilitzar en altres integracions
 #to do: incluir summarywriter de tensorboard para iqf
-#to do: ejecutar con crops de 512 y 1024
+#to do: ejecutar con crops de 512 y 1024 con menor batch size?
 #to do: incluir patience para no depender del nEpochs
+#to do: fix regressor scale i sharpness
+#to do: poner una funcionalidad para hacer un target parameter 'optimo' en términos de rer, snr, etc (ya que el regressor se entrenó con onehot). se deberia probar este caso para downscalings mayores, seguramente mejoraría
 import argparse, os, json
 import sys
 import torch
@@ -14,19 +15,13 @@ import torchvision
 import numpy as np
 from datetime import datetime;
 
-from metrics import PSNR
-from metrics import SSIM
+from metrics import PSNR, SSIM, FID
 from models.msrn import MSRN_Upscale
 from dataset_hr_lr import DatasetHR_LR
 from torch.utils.data import DataLoader
 from models.perceptual_loss import VGGPerceptualLoss
-from iq_tool_box.quality_metrics import (
-    GaussianBlurMetrics,
-    NoiseSharpnessMetrics,
-    RERMetrics,
-    ResolScaleMetrics,
-    SNRMetrics,
-)
+
+from regressor_loss import argparse_regressor_loss, init_regressor_loss, apply_regressor_loss
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch MSRN")
@@ -38,12 +33,6 @@ parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--colorjitter", action="store_true", help="Use colorjitter?")
 parser.add_argument("--add_noise", action="store_true", help="Use cuda?")
 parser.add_argument("--vgg_loss", action="store_true", help="Use perceptual loss?")
-parser.add_argument("--regressor_loss", default=None, type=str, help="Regressor quality metric")
-parser.add_argument("--regressor_criterion", default=None, type=str, help="Criterion for regressor quality metric loss")
-parser.add_argument("--regressor_loss_factor", type=float, default=1.0, help="Constant to multiply by loss")
-parser.add_argument("--regressor_zeroclamp", action="store_true", help="Clamp negative regressor losses to 0")
-parser.add_argument("--regressor_onorm", action="store_true", help="Normalize to original loss mean")
-parser.add_argument("--regressor_gt2onehot", action="store_true", help="Make HR regressor outputs to binary, upon max")
 parser.add_argument("--resume", action="store_true", help="take last epoch available")
 parser.add_argument("--threads", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
 parser.add_argument("--start_epoch", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
@@ -55,6 +44,7 @@ parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
 parser.add_argument("--nockpt", action="store_true", help="Flag to not save checkpoint")
+parser = argparse_regressor_loss(argparser)
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
@@ -136,41 +126,7 @@ def main():
     if opt.regressor_loss is not None:
         global quality_metric
         global quality_metric_criterion
-        if opt.regressor_loss == "rer":
-            quality_metric = RERMetrics()
-        elif opt.regressor_loss == "snr":
-            quality_metric = SNRMetrics()
-        elif opt.regressor_loss == "sigma":
-            quality_metric = GaussianBlurMetrics()
-        elif opt.regressor_loss == "sharpness":
-            quality_metric = NoiseSharpnessMetrics()
-        elif opt.regressor_loss == "scale":
-            quality_metric = ResolScaleMetrics() 
-        if opt.regressor_criterion == None:
-            quality_metric_criterion = nn.BCELoss(reduction='mean') 
-        elif opt.regressor_criterion == "BCELoss":
-            quality_metric_criterion = nn.BCELoss(reduction='none')
-        elif opt.regressor_criterion == "BCELoss_mean":
-            quality_metric_criterion = nn.BCELoss(reduction='mean')
-        elif opt.regressor_criterion == "BCELoss_sum":
-            quality_metric_criterion = nn.BCELoss(reduction='sum')
-        elif opt.regressor_criterion == "L1Loss":
-            quality_metric_criterion = nn.L1Loss(reduction='none')
-        elif opt.regressor_criterion == "L1Loss_mean":
-            quality_metric_criterion = nn.L1Loss(reduction='mean')
-        elif opt.regressor_criterion == "L1Loss_sum":
-            quality_metric_criterion = nn.L1Loss(reduction='sum')
-        elif opt.regressor_criterion == "MSELoss":
-            quality_metric_criterion = nn.MSELoss(reduction='none')
-        elif opt.regressor_criterion == "MSELoss_mean":
-            quality_metric_criterion = nn.MSELoss(reduction='mean')
-        elif opt.regressor_criterion == "MSELoss_sum":
-            quality_metric_criterion = nn.MSELoss(reduction='sum')
-        quality_metric_criterion.eval()
-        quality_metric.regressor.net.eval()
-        if opt.cuda:
-            quality_metric_criterion.cuda()
-            quality_metric.regressor.net.cuda()
+        quality_metric , quality_metric_criterion = init_regressor_loss(opt)
         print("Using regressor loss")
 
     print("===> Setting GPU")
@@ -217,6 +173,7 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
     
     metric_psnr = PSNR()
     metric_ssim = SSIM()
+    metric_fid = FID()
 
 #     lr = adjust_learning_rate(optimizer, epoch-1)
 #     print("learning rate", lr)
@@ -250,30 +207,14 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             loss = loss + 10*vgg_loss
 
         if opt.regressor_loss is not None:
-            output_reg = quality_metric.regressor.net(output)
-            pred_reg = nn.Sigmoid()(output_reg)
-            img_reg = quality_metric.regressor.net(img_hr)
-            regressor_loss = quality_metric_criterion(pred_reg,img_reg.detach())
-            print("Original Loss")
-            print(loss)
-            # checking other hyperparams
-            if opt.regressor_gt2onehot == True:
-                img_reg_bin = torch.zeros_like(img_reg)
-                for idx, hot in enumerate(img_reg):
-                    img_reg_bin[idx,hot.argmax()] = torch.ones_like(img_reg_bin[idx,hot.argmax()])
-                regressor_loss = quality_metric_criterion(pred_reg,img_reg_bin.detach()) 
-            if (opt.regressor_zeroclamp == True) and (regressor_loss < 0):
-                regressor_loss = -regressor_loss * 0 #make 0 conserving tensor type
-            if opt.regressor_loss_factor != 1.0: #multiply by constant factor
-                regressor_loss = regressor_loss * opt.regressor_loss_factor
-            if opt.regressor_onorm == True:
-                regressor_loss = regressor_loss*torch.mean(loss_spatial)   
-            loss = loss + regressor_loss
-            print("Regressor Loss")
-            print(regressor_loss)
+            regressor_loss = apply_regressor_loss(img_hr,output,quality_metric,quality_metric_criterion,opt,loss,loss_spatial)
+            loss = loss + regressor_loss    
+        
+        #Metrics
         psnr = metric_psnr(img_hr, output)
         ssim = metric_ssim(img_hr, output)
-        
+        fid = metric_fid(img_hr, output)
+
         if mode=='training':
             optimizer.zero_grad()
             loss.backward()
@@ -284,10 +225,11 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         grid_pred = torchvision.utils.make_grid(output)[[2, 1, 0],...]
 
         if iteration%10 == 0:
-            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item()))
+            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5} \t FID: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item(), fid.item()))
             writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
+            writer.add_scalar(f'{mode}/FID', fid.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_image(f'{mode}/lr', grid_lr, iteration)
             writer.add_image(f'{mode}/hr', grid_hr, iteration)
             writer.add_image(f'{mode}/pred', grid_pred, iteration)
