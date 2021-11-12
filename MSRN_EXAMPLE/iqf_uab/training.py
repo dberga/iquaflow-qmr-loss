@@ -21,7 +21,7 @@ from dataset_hr_lr import DatasetHR_LR
 from torch.utils.data import DataLoader
 from models.perceptual_loss import VGGPerceptualLoss
 
-from regressor_loss import argparse_regressor_loss, init_regressor_loss, apply_regressor_loss
+from loss_regressor import argparse_regressor_loss, init_regressor_loss, apply_regressor_loss
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch MSRN")
