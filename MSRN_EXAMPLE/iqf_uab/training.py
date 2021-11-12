@@ -44,7 +44,7 @@ parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
 parser.add_argument("--nockpt", action="store_true", help="Flag to not save checkpoint")
-parser = argparse_regressor_loss(argparser)
+parser = argparse_regressor_loss(parser)
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
