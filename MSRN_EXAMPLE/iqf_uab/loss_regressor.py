@@ -77,4 +77,4 @@ def apply_regressor_loss(gt,pred,quality_metric,quality_metric_criterion,opt,los
         regressor_loss = regressor_loss*torch.mean(loss_spatial)
     print("Regressor Loss")
     print(regressor_loss)
-    return regressor_loss
+    return regressor_loss, img_reg, pred_reg

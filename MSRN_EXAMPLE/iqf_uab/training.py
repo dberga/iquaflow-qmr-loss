@@ -207,7 +207,7 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             loss = loss + 10*vgg_loss
 
         if opt.regressor_loss is not None:
-            regressor_loss = apply_regressor_loss(img_hr,output,quality_metric,quality_metric_criterion,opt,loss,loss_spatial)
+            regressor_loss, img_reg, pred_reg = apply_regressor_loss(img_hr,output,quality_metric,quality_metric_criterion,opt,loss,loss_spatial)
             loss = loss + regressor_loss    
         
         #Metrics
