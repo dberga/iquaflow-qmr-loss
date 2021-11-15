@@ -1,4 +1,4 @@
- 
+import torch 
 import torch.nn as nn
 from iq_tool_box.quality_metrics import (
     GaussianBlurMetrics,
