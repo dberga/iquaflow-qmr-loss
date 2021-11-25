@@ -3,6 +3,8 @@
 #to do: incluir patience para no depender del nEpochs
 #to do: fix regressor scale i sharpness
 #to do: poner una funcionalidad para hacer un target parameter 'optimo' en términos de rer, snr, etc (ya que el regressor se entrenó con onehot). se deberia probar este caso para downscalings mayores, seguramente mejoraría
+#to do: freeze network?
+
 import argparse, os, json
 import sys
 import torch
@@ -44,6 +46,7 @@ parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
 parser.add_argument("--nockpt", action="store_true", help="Flag to not save checkpoint")
+parser.add_argument("--saveimgs", action="store_true", help="Save images flag")
 parser = argparse_regressor_loss(parser)
 
 class noiseLayer_normal(nn.Module):
@@ -230,9 +233,10 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
             writer.add_scalar(f'{mode}/FID', fid.item(), epoch*len(dataloader[mode])+iteration)
-            writer.add_image(f'{mode}/lr', grid_lr, iteration)
-            writer.add_image(f'{mode}/hr', grid_hr, iteration)
-            writer.add_image(f'{mode}/pred', grid_pred, iteration)
+            if opt.saveimgs == True:
+                writer.add_image(f'{mode}/lr', grid_lr, iteration)
+                writer.add_image(f'{mode}/hr', grid_hr, iteration)
+                writer.add_image(f'{mode}/pred', grid_pred, iteration)
             if opt.regressor_loss is not None:
                 writer.add_scalar(f'{mode}/REG_LOSS_{type(quality_metric_criterion).__name__}/', regressor_loss.item(), epoch*len(dataloader[mode])+iteration)
                 writer.add_scalar(f'{mode}/LOSS-REG_LOSS_{type(quality_metric_criterion).__name__}/', (loss-regressor_loss).item(), epoch*len(dataloader[mode])+iteration)
