@@ -227,22 +227,22 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         grid_hr = torchvision.utils.make_grid(img_hr)[[2, 1, 0],...]
         grid_pred = torchvision.utils.make_grid(output)[[2, 1, 0],...]
 
-        if iteration%10 == 0:
-            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5} \t FID: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item(), fid.item()))
-            writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
-            writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
-            writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
-            writer.add_scalar(f'{mode}/FID', fid.item(), epoch*len(dataloader[mode])+iteration)
-            if opt.saveimgs == True:
-                writer.add_image(f'{mode}/lr', grid_lr, iteration)
-                writer.add_image(f'{mode}/hr', grid_hr, iteration)
-                writer.add_image(f'{mode}/pred', grid_pred, iteration)
-            if opt.regressor_loss is not None:
-                writer.add_scalar(f'{mode}/REG_LOSS_{type(quality_metric_criterion).__name__}/', regressor_loss.item(), epoch*len(dataloader[mode])+iteration)
-                writer.add_scalar(f'{mode}/LOSS-REG_LOSS_{type(quality_metric_criterion).__name__}/', (loss-regressor_loss).item(), epoch*len(dataloader[mode])+iteration)
-                for i in range(len(pred_reg)):
-                    writer.add_histogram(f'{mode}/REG_pred_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(pred_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
-                    writer.add_histogram(f'{mode}/REG_HR_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(img_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+        #if iteration%10 == 0:
+        print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5} \t FID: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item(), fid.item()))
+        writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/FID', fid.item(), epoch*len(dataloader[mode])+iteration)
+        if opt.saveimgs == True:
+            writer.add_image(f'{mode}/lr', grid_lr, iteration)
+            writer.add_image(f'{mode}/hr', grid_hr, iteration)
+            writer.add_image(f'{mode}/pred', grid_pred, iteration)
+        if opt.regressor_loss is not None:
+            writer.add_scalar(f'{mode}/REG_LOSS_{type(quality_metric_criterion).__name__}/', regressor_loss.item(), epoch*len(dataloader[mode])+iteration)
+            writer.add_scalar(f'{mode}/LOSS-REG_LOSS_{type(quality_metric_criterion).__name__}/', (loss-regressor_loss).item(), epoch*len(dataloader[mode])+iteration)
+            for i in range(len(pred_reg)):
+                writer.add_histogram(f'{mode}/REG_pred_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(pred_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+                writer.add_histogram(f'{mode}/REG_HR_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(img_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
                 
 def save_checkpoint(model, epoch, path_checkpoints):       
     os.makedirs(path_checkpoints, exist_ok=True)
