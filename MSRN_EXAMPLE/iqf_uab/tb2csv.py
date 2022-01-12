@@ -1,4 +1,5 @@
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+from iq_tool_box.quality_metrics.benchmark import plot_1d
 import numpy as np
 import glob
 import os
@@ -46,7 +47,7 @@ def events2csv(dirpath = "./msrn/experiment"):
 		else:
 			print(experiment_path + " has no tfevents")
 
-def events2csv_stack(dirpath = "./msrn/experiment"):
+def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
 	experiment_paths=glob.glob(os.path.join(dirpath,'*'))
 	stacked_vals = []
 	stacked_metrics = []
@@ -69,6 +70,8 @@ def events2csv_stack(dirpath = "./msrn/experiment"):
 
 	for metric in stacked_metrics:
 		all_rows = []
+		all_rows_data = []
+		all_rows_tags = []
 		# stack experiment values per metric
 		for i,all_vals in enumerate(stacked_vals):
 			experiment_path = experiment_paths[i]
@@ -76,8 +79,10 @@ def events2csv_stack(dirpath = "./msrn/experiment"):
 				experiment_name=os.path.basename(experiment_path)
 				if metric in all_vals.keys():
 					metric_row=all_vals[metric]
+					all_rows_data.append(metric_row)
 					metric_row.insert(0,experiment_name)
 					all_rows.append(metric_row)		
+					all_rows_tags.append(experiment_name)
 		if not len(all_rows):
 			break
 		# add empty values to have same cols for each metric (some experiments have more iters/epochs)
@@ -93,6 +98,8 @@ def events2csv_stack(dirpath = "./msrn/experiment"):
 	        delimiter=",",
 	        fmt='%s'
 	    )
+		if plot:
+			plot_1d(all_rows_data, metric, dirpath, ["iter", metric], all_rows_tags)
 if __name__ == "__main__":
     # events2csv(dirpath = "./msrn/experiment")
-    events2csv_stack(dirpath = "./msrn/experiment")
+    events2csv_stack(dirpath = "./msrn/experiment", True)
