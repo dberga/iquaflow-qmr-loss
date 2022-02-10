@@ -122,10 +122,12 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
 	    )
         print("Generating Min Max Tables"+os.path.join(dirpath, metric+".csv"))
     	# get best values for all rows
+        all_rows_lastvals=[row[-60:len(row)] for row in all_rows_data] # 60 iter corresponds to 10 epoch, namely (1200 iter / 200 epoch) * 10
+        lastvals_mean=[np.mean(row) for row in all_rows_lastvals]
         if "FID" in metric or "LOSS" in metric:
-            bestvals=[np.min(row) for row in all_rows_data] # axis=1
+            bestvals=[np.min(row) for row in all_rows_lastvals] # axis=1
         else:
-        	bestvals=[np.max(row) for row in all_rows_data]
+        	bestvals=[np.max(row) for row in all_rows_lastvals]
         all_rows_bestvals=[list(val) for val in zip(all_rows_tags,formatvals(bestvals,True))]
         # generate csv with best values for each experiment
         np.savetxt(
@@ -136,25 +138,27 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
         )
         # filter top K (11) values to allow visible plotting (discard low value experiments)
         top_k_idx=get_topk(bestvals,11)
-        all_rows_data_top=[all_rows_data[idx] for idx in top_k_idx]
+        all_rows_data_top=[all_rows_lastvals[idx] for idx in top_k_idx]
         all_rows_tags_top=[all_rows_tags[idx] for idx in top_k_idx]
         bestvals_top=[bestvals[idx] for idx in top_k_idx]
 
         # generate plots
         print("Plotting "+os.path.join(dirpath, metric+".png"))
         if plot:
-        	plot_1d(all_rows_data_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (5,5), "boxplot")
-        	plot_1d(bestvals_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (5,5), "bar")
-        	plot_1d(all_rows_data_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (20,20), "plot")
+        	plot_1d(all_rows_data_top, "box_"+metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "boxplot")
+        	plot_1d(bestvals_top, "bar_"+metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "bar")
+        	plot_1d(all_rows_data_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "plot")
 if __name__ == "__main__":
     # events2csv(dirpath = "./msrn/experiment")
-    events2csv_stack(dirpath = "./msrn/experiment_crops32_short", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops32_whole", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops64_short", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops64_whole", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops128_short", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops128_whole", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops256_short", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops256_whole", plot=True)
-    events2csv_stack(dirpath = "./msrn/experiment_crops512_short", plot=True)
     events2csv_stack(dirpath = "./msrn/experiment_crops512_whole", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops256_whole", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops128_whole", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops64_whole", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops32_whole", plot=True)
+    '''
+    events2csv_stack(dirpath = "./msrn/experiment_crops512_short", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops256_short", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops128_short", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops64_short", plot=True)
+    events2csv_stack(dirpath = "./msrn/experiment_crops32_short", plot=True)
+    '''
