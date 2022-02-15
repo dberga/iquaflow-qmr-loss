@@ -1,27 +1,8 @@
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-from iq_tool_box.quality_metrics.benchmark import plot_1d
+from iq_tool_box.quality_metrics.benchmark import plot_1d, get_topk, formatvals
 import numpy as np
 import glob
 import os
-import operator
-
-def get_topk(lst,k=3,reverse=True):
-	indexed = list(enumerate(lst)) # attach indices to the list
-	top_k = sorted(indexed, key=operator.itemgetter(1))[-k:]
-	if reverse is True:
-		return list(reversed([i for i, v in top_k])) # max first, min last
-	else:
-		return list([i for i, v in top_k]) # min first, max last
-
-def formatvals(vals, tostr=True, round_decimals = 5):
-    newvals = []
-    for val in vals:
-        if tostr:
-            newval=str(val) # str(round(val,round_decimals))
-        else:
-            newval=val # round(val,round_decimals)
-        newvals.append(newval)
-    return newvals
 
 def event2arrays(experiment_path):
     event_acc = EventAccumulator(experiment_path)
@@ -125,10 +106,16 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
         all_rows_lastvals=[row[-60:len(row)] for row in all_rows_data] # 60 iter corresponds to 10 epoch, namely (1200 iter / 200 epoch) * 10
         lastvals_mean=[np.mean(row) for row in all_rows_lastvals]
         if "FID" in metric or "LOSS" in metric:
+            top_k_idx=get_topk(all_rows_data,11,True)
             bestvals=[np.min(row) for row in all_rows_lastvals] # axis=1
         else:
+            top_k_idx=get_topk(all_rows_data,11,False)
         	bestvals=[np.max(row) for row in all_rows_lastvals]
         all_rows_bestvals=[list(val) for val in zip(all_rows_tags,formatvals(bestvals,True))]
+        # filter top K (11) values to allow visible plotting (discard low value experiments)
+        all_rows_data_top=[all_rows_lastvals[idx] for idx in top_k_idx]
+        all_rows_tags_top=[all_rows_tags[idx] for idx in top_k_idx]
+        bestvals_top=[bestvals[idx] for idx in top_k_idx]
         # generate csv with best values for each experiment
         np.savetxt(
             os.path.join(dirpath, "best_"+metric+".csv"),
@@ -136,18 +123,12 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
             delimiter=",",
             fmt='%s'
         )
-        # filter top K (11) values to allow visible plotting (discard low value experiments)
-        top_k_idx=get_topk(bestvals,11)
-        all_rows_data_top=[all_rows_lastvals[idx] for idx in top_k_idx]
-        all_rows_tags_top=[all_rows_tags[idx] for idx in top_k_idx]
-        bestvals_top=[bestvals[idx] for idx in top_k_idx]
-
         # generate plots
         print("Plotting "+os.path.join(dirpath, metric+".png"))
         if plot:
         	plot_1d(all_rows_data_top, "box_"+metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "boxplot")
         	plot_1d(bestvals_top, "bar_"+metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "bar")
-        	plot_1d(all_rows_data_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (10,10), "plot")
+        	plot_1d(all_rows_data_top, metric, dirpath, ["iter", metric], all_rows_tags_top, (20,20), "plot")
 if __name__ == "__main__":
     # events2csv(dirpath = "./msrn/experiment")
     events2csv_stack(dirpath = "./msrn/experiment_crops512_whole", plot=True)
