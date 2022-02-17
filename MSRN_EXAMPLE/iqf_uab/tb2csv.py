@@ -110,7 +110,7 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
             bestvals=[np.min(row) for row in all_rows_lastvals] # axis=1
         else:
             top_k_idx=get_topk(all_rows_data,11,True)
-        	bestvals=[np.max(row) for row in all_rows_lastvals]
+            bestvals=[np.max(row) for row in all_rows_lastvals]
         all_rows_bestvals=[list(val) for val in zip(all_rows_tags,formatvals(bestvals,True))]
         # filter top K (11) values to allow visible plotting (discard low value experiments)
         all_rows_data_top=[all_rows_lastvals[idx] for idx in top_k_idx]
