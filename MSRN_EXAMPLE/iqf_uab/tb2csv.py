@@ -106,10 +106,10 @@ def events2csv_stack(dirpath = "./msrn/experiment", plot=True):
         all_rows_lastvals=[row[-60:len(row)] for row in all_rows_data] # 60 iter corresponds to 10 epoch, namely (1200 iter / 200 epoch) * 10
         lastvals_mean=[np.mean(row) for row in all_rows_lastvals]
         if "FID" in metric or "LOSS" in metric:
-            top_k_idx=get_topk(all_rows_data,11,True)
+            top_k_idx=get_topk(all_rows_data,11,False)
             bestvals=[np.min(row) for row in all_rows_lastvals] # axis=1
         else:
-            top_k_idx=get_topk(all_rows_data,11,False)
+            top_k_idx=get_topk(all_rows_data,11,True)
         	bestvals=[np.max(row) for row in all_rows_lastvals]
         all_rows_bestvals=[list(val) for val in zip(all_rows_tags,formatvals(bestvals,True))]
         # filter top K (11) values to allow visible plotting (discard low value experiments)
