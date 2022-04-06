@@ -1,10 +1,11 @@
 import os
 import sys
+import piq
+fid_metric = piq.FID()
 import math
 import torch
 import numpy as np
 import cv2
-
 
 class PSNR:
     """Peak Signal to Noise Ratio
@@ -30,18 +31,38 @@ class SSIM:
     def __call__(img1, img2):
         if not img1.shape == img2.shape:
             raise ValueError("Input images must have the same dimensions.")
+        # clamp negative values to zero (values should range between 0. and 1.)
+        if len(img1[img1<0]>0) or len(img2[img2<0]>0) or len(img1[img1>1]>0) or len(img2[img2>1]>0):
+            img1p=img1.clone();
+            img1p[img1p<0.]=0.
+            img1p[img1p>1.]=1.
+            img2p=img2.clone();
+            img2p[img2p<0.]=0.
+            img2p[img2p>1.]=1.
+            return piq.ssim(img1p,img2p)
+        return piq.ssim(img1,img2)
+        '''
         if img1.ndim == 2:  # Grey or Y-channel image
             return self._ssim(img1, img2)
         elif img1.ndim == 3:
-            if img1.shape[2] == 3:
+            if img1.shape[0] == 3:
                 ssims = []
                 for i in range(3):
-                    ssims.append(ssim(img1, img2))
+                    ssims.append(self._ssim(img1[i,:,:], img2[i,:,:]))
                 return np.array(ssims).mean()
-            elif img1.shape[2] == 1:
+            elif img1.shape[0] == 1:
                 return self._ssim(np.squeeze(img1), np.squeeze(img2))
-        else:
-            raise ValueError("Wrong input image dimensions.")
+        elif img1.ndim == 4:
+            N=img1.shape[0];
+            for n in range(N):
+                if img1.shape[1] == 3:
+                    ssims = []
+                    for i in range(3):
+                        ssims.append(self._ssim(img1[n,i,:,:], img2[n,i,:,:]))
+                    return np.array(ssims).mean()
+                elif img1.shape[1] == 1:
+                    return self._ssim(np.squeeze(img1[n,:,:,:]), np.squeeze(img2[n,:,:,:]))
+        '''
 
     @staticmethod
     def _ssim(img1, img2):
@@ -66,3 +87,32 @@ class SSIM:
             (mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2)
         )
         return ssim_map.mean()
+
+class FID:
+    """Frechet inception distance
+    img1, img2: [0., 1.0]"""
+
+    def __init__(self):
+        self.name = "FID"
+
+    @staticmethod
+    def __call__(img1, img2):
+        if not img1.shape == img2.shape:
+            raise ValueError("Input images must have the same dimensions.")
+        '''
+        fimg1=fid_metric.compute_feats(img1)
+        fimg2=fid_metric.compute_feats(img2)
+        fid: torch.Tensor = self.fid_metric(fimg1,fimg2)
+        return fid
+        '''
+        N=img1.shape[0];
+        fids=[]
+        for n in range(N):
+            fid_value = np.sum( [
+                fid_metric( torch.squeeze(img2)[n,i,...], torch.squeeze(img1)[n,i,...] ).item()
+                for i in range( img2.shape[1] )
+                ] ) / img2.shape[1]
+            fids.append(fid_value)
+        return np.array(fids).mean()
+
+

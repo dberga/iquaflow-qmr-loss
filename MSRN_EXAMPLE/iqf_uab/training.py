@@ -1,4 +1,11 @@
-import argparse, os
+#to do: incluir summarywriter de tensorboard para iqf
+#to do: ejecutar con crops de 512 y 1024 con menor batch size?
+#to do: incluir patience para no depender del nEpochs
+#to do: fix regressor scale i sharpness
+#to do: poner una funcionalidad para hacer un target parameter 'optimo' en términos de rer, snr, etc (ya que el regressor se entrenó con onehot). se deberia probar este caso para downscalings mayores, seguramente mejoraría
+#to do: freeze network?
+
+import argparse, os, json
 import sys
 import torch
 import math, random
@@ -8,15 +15,19 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import numpy as np
+from datetime import datetime;
 
-from metrics import PSNR
+from metrics import PSNR, SSIM, FID
 from models.msrn import MSRN_Upscale
 from dataset_hr_lr import DatasetHR_LR
 from torch.utils.data import DataLoader
 from models.perceptual_loss import VGGPerceptualLoss
 
+from loss_regressor import argparse_regressor_loss, init_regressor_loss, apply_regressor_loss
+
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch MSRN")
+parser.add_argument("--trainid", default=None, type=str, help="Training id to save tensorboard logs")
 parser.add_argument("--batchSize", type=int, default=16, help="training batch size")
 parser.add_argument("--nEpochs", type=int, default=1500, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate. Default=1e-3")
@@ -34,7 +45,9 @@ parser.add_argument("--path_out", default="msrn/experiment/", type=str, help="pa
 parser.add_argument("--trainds_input", default="test_datasets/AerialImageDataset/train/images", type=str, help="path input training")
 parser.add_argument("--valds_input", default="test_datasets/AerialImageDataset/test/images", type=str, help="path input val")
 parser.add_argument("--crop_size", type=int, default=512, help="Crop size")
-
+parser.add_argument("--nockpt", action="store_true", help="Flag to not save checkpoint")
+parser.add_argument("--saveimgs", action="store_true", help="Save images flag")
+parser = argparse_regressor_loss(parser)
 
 class noiseLayer_normal(nn.Module):
     def __init__(self, noise_percentage, mean=0, std=0.2):
@@ -60,7 +73,17 @@ def main():
     global opt, model
     opt = parser.parse_args()
     os.makedirs(opt.path_out, exist_ok=True)
-    writer = SummaryWriter(opt.path_out)
+    tt = datetime.now()
+    ttdate = tt.strftime("%m-%d-%Y_%H:%M:%S")
+    if opt.trainid == None:
+        opt.trainid = "run_"+ttdate
+    path_logs = os.path.join(opt.path_out,opt.trainid)
+    path_checkpoints = os.path.join(path_logs, "checkpoint_"+opt.trainid)
+    os.makedirs(path_logs, exist_ok=True)
+    os.makedirs(path_checkpoints, exist_ok=True)
+    writer = SummaryWriter(path_logs)
+    with open(os.path.join(path_logs,'config.txt'), 'w') as f: #save argparse params config in text
+        json.dump(opt.__dict__,f,indent=2)
 
     print(opt)
 
@@ -98,12 +121,17 @@ def main():
     
     if opt.vgg_loss:
         global perceptual_loss
-
         perceptual_loss = VGGPerceptualLoss()
         perceptual_loss.eval()
         perceptual_loss.cuda()
         print("Using perceptual loss")
-    
+
+    if opt.regressor_loss is not None:
+        global quality_metric
+        global quality_metric_criterion
+        quality_metric , quality_metric_criterion = init_regressor_loss(opt)
+        print("Using regressor loss")
+
     print("===> Setting GPU")
     if cuda:
         model = model.cuda()
@@ -111,7 +139,6 @@ def main():
         
     # optionally resume from a checkpoint
     if opt.resume:
-        path_checkpoints = os.path.join(opt.path_out, "checkpoint/")
         list_epochs = [int(f.split('.')[0].split('_')[-1]) for f in os.listdir(path_checkpoints)]
         list_epochs.sort()
         last_epoch = list_epochs[-1]
@@ -137,8 +164,8 @@ def main():
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         for mode in ['training', 'validation']:
             train(mode, dataloaders, optimizer, model, criterion, epoch, writer)
-            if mode=='training':
-                save_checkpoint(model, epoch, opt.path_out)
+            if (mode == 'training') & (opt.nockpt != True):
+                save_checkpoint(model, epoch, path_checkpoints)
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
@@ -148,6 +175,8 @@ def adjust_learning_rate(optimizer, epoch):
 def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
     
     metric_psnr = PSNR()
+    metric_ssim = SSIM()
+    metric_fid = FID()
 
 #     lr = adjust_learning_rate(optimizer, epoch-1)
 #     print("learning rate", lr)
@@ -180,8 +209,15 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             vgg_loss,_ = perceptual_loss(output, img_hr)
             loss = loss + 10*vgg_loss
 
-        psnr = metric_psnr(img_hr, output)
+        if opt.regressor_loss is not None:
+            regressor_loss, img_reg, pred_reg = apply_regressor_loss(img_hr,output,quality_metric,quality_metric_criterion,opt,loss,loss_spatial)
+            loss = loss + regressor_loss    
         
+        #Metrics
+        psnr = metric_psnr(img_hr, output)
+        ssim = metric_ssim(img_hr, output)
+        fid = metric_fid(img_hr, output)
+
         if mode=='training':
             optimizer.zero_grad()
             loss.backward()
@@ -191,20 +227,26 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         grid_hr = torchvision.utils.make_grid(img_hr)[[2, 1, 0],...]
         grid_pred = torchvision.utils.make_grid(output)[[2, 1, 0],...]
 
-        if iteration%10 == 0:
-            print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item()))
-            writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
-            writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
+        #if iteration%10 == 0:
+        print("===>{}\tEpoch[{}]({}/{}): Loss: {:.5} \t PSNR: {:.5} \t SSIM: {:.5} \t FID: {:.5}".format(mode, epoch, iteration, len(dataloader[mode]), loss.item(), psnr.item(), ssim.item(), fid.item()))
+        writer.add_scalar(f'{mode}/LOSS/', loss.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/PSNR', psnr.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/SSIM', ssim.item(), epoch*len(dataloader[mode])+iteration)
+        writer.add_scalar(f'{mode}/FID', fid.item(), epoch*len(dataloader[mode])+iteration)
+        if opt.saveimgs == True:
             writer.add_image(f'{mode}/lr', grid_lr, iteration)
             writer.add_image(f'{mode}/hr', grid_hr, iteration)
             writer.add_image(f'{mode}/pred', grid_pred, iteration)
-            
-    
-
-def save_checkpoint(model, epoch, path_out):
-    path_out = os.path.join(path_out, "checkpoint/")         
-    os.makedirs(path_out, exist_ok=True)
-    model_out_path = path_out + f"model_epoch_{epoch}.pth".format(epoch)
+        if opt.regressor_loss is not None:
+            writer.add_scalar(f'{mode}/REG_LOSS_{type(quality_metric_criterion).__name__}/', regressor_loss.item(), epoch*len(dataloader[mode])+iteration)
+            writer.add_scalar(f'{mode}/LOSS-REG_LOSS_{type(quality_metric_criterion).__name__}/', (loss-regressor_loss).item(), epoch*len(dataloader[mode])+iteration)
+            for i in range(len(pred_reg)):
+                writer.add_histogram(f'{mode}/REG_pred_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(pred_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+                writer.add_histogram(f'{mode}/REG_HR_{opt.regressor_loss}/', quality_metric.regressor.yclasses[opt.regressor_loss][torch.argmax(img_reg, dim=1)[i].item()], epoch*len(dataloader[mode])+iteration)
+                
+def save_checkpoint(model, epoch, path_checkpoints):       
+    os.makedirs(path_checkpoints, exist_ok=True)
+    model_out_path = os.path.join(path_checkpoints + f"model_epoch_{epoch}.pth".format(epoch))
     state = {"epoch": epoch ,"model": model}
     torch.save(state, model_out_path)
 
