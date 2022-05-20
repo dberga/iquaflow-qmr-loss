@@ -9,3 +9,6 @@ wget https://d307kc0mrhucc3.cloudfront.net/val_images.zip
 
 #INRIA Aerial Image Labeling Dataset
 curl -k https://files.inria.fr/aerialimagelabeling/getAerial.sh | bash;
+
+# SEMCITY Toulouse
+#URL: https://uni-bonn.sciebo.de/s/0Na2BbP94p9CUYZ
