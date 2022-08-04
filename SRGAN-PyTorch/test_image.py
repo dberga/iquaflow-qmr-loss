@@ -59,9 +59,9 @@ parser.add_argument("--gpu", default=None, type=int,
 parser.add_argument("--path_out", default="tests", type=str, metavar="PATH",
                     help="Path to tests output")
 
+args = parser.parse_args()
 
 def main():
-    args = parser.parse_args()
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)

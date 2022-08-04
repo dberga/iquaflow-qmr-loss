@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(description='Content Adaptive Resampler for Ima
 parser.add_argument('--model_dir', type=str, default='./models', help='path to the pre-trained model')
 parser.add_argument('--img_dir', type=str, help='path to the HR images to be downscaled')
 parser.add_argument('--scale', type=int, help='downscale factor')
+parser.add_argument('--upscale_only', action='store_true', help='do not downscale original image for comparison')
 parser.add_argument('--output_dir', type=str, help='path to store results')
 parser.add_argument('--benchmark', type=bool, default=True, help='report benchmark results')
 args = parser.parse_args()
@@ -41,18 +42,21 @@ upscale_net.load_state_dict(torch.load(os.path.join(args.model_dir, '{0}x'.forma
 torch.set_grad_enabled(False)
 
 
-def validation(img, name, save_imgs=False, save_dir=None):
+def validation(img, name, save_imgs=False, save_dir=None, upscale_only=True):
     kernel_generation_net.eval()
     downsampler_net.eval()
     upscale_net.eval()
 
     kernels, offsets_h, offsets_v = kernel_generation_net(img)
+    
     downscaled_img = downsampler_net(img, kernels, offsets_h, offsets_v, OFFSET_UNIT)
     downscaled_img = torch.clamp(downscaled_img, 0, 1)
     downscaled_img = torch.round(downscaled_img * 255)
 
-    reconstructed_img = upscale_net(downscaled_img / 255.0)
-
+    if upscale_only is not True:
+        reconstructed_img = upscale_net(downscaled_img / 255.0)
+    else:
+        reconstructed_img = upscale_net(img)
     img = img * 255
     img = img.data.cpu().numpy().transpose(0, 2, 3, 1)
     img = np.uint8(img)
@@ -78,20 +82,25 @@ def validation(img, name, save_imgs=False, save_dir=None):
         img = Image.fromarray(recon_img)
         img.save(os.path.join(save_dir, name + '_recon.png'))
 
-    psnr = utils.cal_psnr(orig_img[SCALE:-SCALE, SCALE:-SCALE, ...], recon_img[SCALE:-SCALE, SCALE:-SCALE, ...], benchmark=BENCHMARK)
-
-    orig_img_y = rgb2ycbcr(orig_img)[:, :, 0]
-    recon_img_y = rgb2ycbcr(recon_img)[:, :, 0]
-    orig_img_y = orig_img_y[SCALE:-SCALE, SCALE:-SCALE, ...]
-    recon_img_y = recon_img_y[SCALE:-SCALE, SCALE:-SCALE, ...]
-
-    ssim = utils.calc_ssim(recon_img_y, orig_img_y)
+    if upscale_only is not True:
+        psnr = utils.cal_psnr(orig_img[SCALE:-SCALE, SCALE:-SCALE, ...], recon_img[SCALE:-SCALE, SCALE:-SCALE, ...], benchmark=BENCHMARK)
+        orig_img_y = rgb2ycbcr(orig_img)[:, :, 0]
+        recon_img_y = rgb2ycbcr(recon_img)[:, :, 0]
+        orig_img_y = orig_img_y[SCALE:-SCALE, SCALE:-SCALE, ...]
+        recon_img_y = recon_img_y[SCALE:-SCALE, SCALE:-SCALE, ...]
+        ssim = utils.calc_ssim(recon_img_y, orig_img_y)
+    else:
+        psnr = -1.0
+        ssim = -1.0
 
     return psnr, ssim
 
 
 if __name__ == '__main__':
-    img_list = glob(os.path.join(args.img_dir, '**', '*.png'), recursive=True)
+    img_list_all_formats = [glob(os.path.join(args.img_dir, '**', e), recursive=True) for e in ['*.png','*.jpg','*.jpeg','*.tif']]
+    img_list = [img for lists in img_list_all_formats for img in lists]
+    
+    # img_list = glob(os.path.join(args.img_dir, '**', '*.png'), recursive=True)
     assert len(img_list) > 0
 
     if not os.path.exists(args.output_dir):
@@ -105,7 +114,7 @@ if __name__ == '__main__':
 
         img = utils.load_img(img_file)
 
-        psnr, ssim = validation(img, name, save_imgs=True, save_dir=args.output_dir)
+        psnr, ssim = validation(img, name, save_imgs=True, save_dir=args.output_dir, upscale_only=bool(args.upscale_only))
         psnr_list.append(psnr)
         ssim_list.append(ssim)
 

@@ -20,7 +20,7 @@ def generate_low_resolution_image(img_array, scale=2):
         kernel_size=+1
             
     kernel_tensor = kornia.filters.get_gaussian_kernel2d((kernel_size,kernel_size), (sigma, sigma))
-    blurred = kornia.filter2D(img, kernel_tensor[None])
+    blurred = kornia.filters.filter2D(img, kernel_tensor[None])
     blurred_resize = kornia.geometry.rescale(blurred, scale, 'bilinear')
     print(blurred_resize.size())
     blurred_resize = blurred_resize.numpy()[0].transpose(1,2,0).astype(np.uint8)

@@ -16,6 +16,7 @@ We will use this repo for research and development.
 * [Autograd loss problem](https://stackoverflow.com/questions/64513183/pytorch-not-updating-weights-when-using-autograd-in-loss-function)
 * [Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network](https://github.com/Lornatang/SRGAN-PyTorch)
 * [Learned Image Downscaling for Upscaling using Content Adaptive Resampler](https://github.com/sunwj/CAR)
+* [changyu liu all other models weights (2022)](https://drive.google.com/drive/folders/1EzGSqgWC8q0qKtQXMQbur4kBQqsjtBnN)
 ## Install NVIDIA driver (440)
 ```
 sudo add-apt-repository ppa:graphics-drivers/ppa
