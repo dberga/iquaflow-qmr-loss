@@ -1,0 +1,10 @@
+joblib
+notebook
+piq
+boto3
+tensorboardX
+imageio
+scikit-image
+lpips
+opencv-python
+tqdm
