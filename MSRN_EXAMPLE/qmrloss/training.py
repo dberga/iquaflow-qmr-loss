@@ -209,6 +209,8 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
             img_lr = add_noise(img_lr)
 
         output = model(img_lr)
+        if img_hr.shape != output.shape:
+            output = torch.nn.functional.interpolate(output,size=(img_hr.shape[2],img_hr.shape[3]), mode='bilinear')
         loss_spatial = criterion(img_hr, output)
         loss = torch.mean(loss_spatial)
         
