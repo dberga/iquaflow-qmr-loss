@@ -30,6 +30,7 @@ parser = argparse.ArgumentParser(description="PyTorch MSRN")
 parser.add_argument("--trainid", default=None, type=str, help="Training id to save tensorboard logs")
 parser.add_argument("--batchSize", type=int, default=16, help="training batch size")
 parser.add_argument("--nEpochs", type=int, default=1500, help="number of epochs to train for")
+parser.add_argument("--n_scale", type=int, default=2, help="Maximum upscaling, Default: 2")
 parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate. Default=1e-3")
 parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--colorjitter", action="store_true", help="Use colorjitter?")
@@ -94,6 +95,7 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"]=opt.gpus
         if not torch.cuda.is_available():
                 raise Exception("No GPU found or Wrong gpu id, please run without --cuda")
+        torch.cuda.empty_cache()
 
     print("Random Seed: ", opt.seed)
     torch.manual_seed(opt.seed)
@@ -112,7 +114,7 @@ def main():
             batch_size=opt.batchSize, shuffle=False)}
 
     print("===> Building model")
-    model = MSRN_Upscale(n_scale=2)
+    model = MSRN_Upscale(n_scale=opt.n_scale)
     # pretrained
     criterion = nn.L1Loss(reduction='none')
     
@@ -187,7 +189,12 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
     model.train()
     if mode=='validation':
         model.eval()
-
+        torch.no_grad()
+        torch.set_grad_enabled(False)
+    else:
+        torch.enable_grad()
+        torch.set_grad_enabled(True)
+            
     for iteration, batch in enumerate(dataloader[mode], 1):
 
         img_lr, img_hr = batch
@@ -195,7 +202,7 @@ def train(mode, dataloader, optimizer, model, criterion, epoch, writer):
         if opt.cuda:
             img_lr = img_lr.cuda()
             img_hr = img_hr.cuda()
-            
+
         if opt.add_noise:
             scale_noise = np.random.choice(np.arange(0.05, 0.2, 0.01))
             add_noise = noiseLayer_normal(scale_noise, mean=0, std=0.2)
@@ -256,6 +263,6 @@ def save_checkpoint(model, epoch, path_checkpoints):
     if os.path.exists(old_checkpoint):
         os.remove(old_checkpoint)
         print("Removed old checkpoint")
-        
+
 if __name__ == "__main__":
     main()
