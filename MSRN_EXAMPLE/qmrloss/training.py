@@ -79,7 +79,7 @@ def main():
     if opt.trainid == None:
         opt.trainid = "run_"+ttdate
     path_logs = os.path.join(opt.path_out,opt.trainid)
-    path_checkpoints = os.path.join(path_logs, "checkpoint_"+opt.trainid)
+    path_checkpoints = os.path.join(path_logs, "model_checkpoint_"+opt.trainid)
     os.makedirs(path_logs, exist_ok=True)
     os.makedirs(path_checkpoints, exist_ok=True)
     writer = SummaryWriter(path_logs)
