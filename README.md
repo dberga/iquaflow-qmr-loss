@@ -1,6 +1,8 @@
+![](https://github.com/satellogic/iquaflow/blob/main/docs/source/iquaflow_logo_mini.png)
+
 # IQUAFLOW - QMRNet's Loss for Super Resolution Optimization
 
-Note: Use any our [jupyter notebook](IQF-UseCase-QMRLOSS.ipynb) to run the use case.
+- Note: Use any our [jupyter notebook](IQF-UseCase-QMRLOSS.ipynb) to run the use case.
 
 - The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo) and [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr).
 
