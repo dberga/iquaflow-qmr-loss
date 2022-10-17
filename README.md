@@ -22,11 +22,11 @@ ________________________________________________________________________________
 ## To reproduce the experiments:
 
 1. `git clone https://YOUR_GIT_TOKEN@github.com/dberga/iquaflow-qmr-loss.git`
-2. `cd iq-sisr-use-case`
+2. `cd iquaflow-qmr-loss`
 3. Then build the docker image with `make build`.(\*\*\*) This will also download required datasets and weights.
 4. In order to execute the experiments:
     - `make dockershell` (\*)
-    - Inside the docker terminal execute `python ./IQF-UseCase-QMRLOSS.py`
+    - Inside the docker terminal execute `sh train_new_rer.sh`
 5. Start the mlflow server by doing `make mlflow` (\*)
 6. Notebook examples can be launched and executed by `make notebookshell NB_PORT=[your_port]"` (\**)
 7. To access the notebook from your browser in your local machine you can do:
