@@ -1,4 +1,5 @@
 ![](https://github.com/satellogic/iquaflow/blob/main/docs/source/iquaflow_logo_mini.png)
+Check [QMRNet's preprint](https://arxiv.org/abs/2210.06618) and [IQUAFLOW's preprint](https://arxiv.org/abs/XXXX.XXXXX) documentation
 
 # IQUAFLOW - QMRNet's Loss for Super Resolution Optimization
 
@@ -9,6 +10,12 @@
 # MSRN optimization
 
 In this repo we add a novel QMRLoss which is able to adapt or regularize the training of MSRN upon a specific metric objective (e.g. blur, sharpness, rer, snr, etc.) with respect GT. It can also be used to regularize to explicitly minimize or maximize a specific metric.
+ - *rer* is a measure of the edge response ( mesures the degree of the transition ) which also informs on image sharpness.
+ - *snr* - Signal to noise (gaussian) ratio.
+ - *sigma* - of a gaussian distribution. It measures blur by defining its kernel.
+ - *sharpness* - Edge response (lower is blurred, higher is oversharpened)
+ - *scale* - resolution proportion scale (x2 from 0.30 is 0.15 m/px)
+
 ____________________________________________________________________________________________________
 
 
