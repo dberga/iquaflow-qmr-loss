@@ -45,7 +45,7 @@ RUN ln -sf /bin/python3.6 /bin/python3
 RUN pip3 install pip --upgrade
 
 WORKDIR /qmrloss
-RUN pip3 install git+https://YOUR_GIT_TOKEN@github.com/satellogic/iquaflow.git@dberga-regressor
+RUN pip3 install git+https://YOUR_GIT_TOKEN@github.com/satellogic/iquaflow.git
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
