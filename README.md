@@ -3,7 +3,7 @@ Check [QMRNet's article](https://www.mdpi.com/2072-4292/15/9/2451) and [IQUAFLOW
 
 # IQUAFLOW - QMRNet's Loss for Super Resolution Optimization
 
-- Note: Use any our shell scripts to train MSRN with QMR+[rer](train_new_rer.sh),[snr](train_new_snr.sh),[blur](train_new_sigma.sh),[sharpness](train_new_sharpness.sh),[gsr](train_new_scale.sh) to run the use case (train and validate the network).
+- Note: Use any our shell scripts to train MSRN with QMR+[rer](train_new_rer.sh),[snr](train_new_snr.sh),[blur](train_new_sigma.sh),[sharpness](train_new_sharpness.sh),[gsr](train_new_scale.sh) to run the use case (train and validate the network). Also you can train and validate with the original [vanilla MSRN](train_new_vanilla_hd.sh).
 
 - The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo) and [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr).
 
