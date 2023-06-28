@@ -1,9 +1,9 @@
 ![](https://github.com/satellogic/iquaflow/blob/main/docs/source/iquaflow_logo_mini.png)
-Check [QMRNet's preprint](https://arxiv.org/abs/2210.06618) and [IQUAFLOW's preprint](https://arxiv.org/abs/2210.13269) documentation
+Check [QMRNet's article](https://www.mdpi.com/2072-4292/15/9/2451) and [IQUAFLOW's preprint](https://arxiv.org/abs/2210.13269) documentation
 
 # IQUAFLOW - QMRNet's Loss for Super Resolution Optimization
 
-- Note: Use any our [shell scripts](train_new_rer.sh) to run the use case (train and validate the network).
+- Note: Use any our shell scripts to train MSRN with QMR+[rer](train_new_rer.sh),[snr](train_new_snr.sh),[blur](train_new_sigma.sh),[sharpness](train_new_sharpness.sh),[gsr](train_new_scale.sh) to run the use case (train and validate the network).
 
 - The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo) and [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr).
 
@@ -64,11 +64,18 @@ Note: make sure to replace "YOUR_GIT_TOKEN" to your github access token, also in
 If you use content of this repo, please cite:
 
 ```
-@article{berga2022,
-  title={QMRNet: Quality Metric Regression for EO Image Quality Assessment and Super-Resolution},
-  author={Berga, David and Gallés, Pau and Takáts, Katalin and Mohedano, Eva and Riordan-Chen, Laura and Garcia-Moll, Clara and Vilaseca, David and Marín, Javier},
-  journal={arXiv preprint arXiv:2210.06618},
-  year={2022}
+@article{rs15092451,
+AUTHOR = {Berga, David and Gallés, Pau and Takáts, Katalin and Mohedano, Eva and Riordan-Chen, Laura and Garcia-Moll, Clara and Vilaseca, David and Marín, Javier},
+TITLE = {QMRNet: Quality Metric Regression for EO Image Quality Assessment and Super-Resolution},
+JOURNAL = {Remote Sensing},
+VOLUME = {15},
+YEAR = {2023},
+NUMBER = {9},
+ARTICLE-NUMBER = {2451},
+URL = {https://www.mdpi.com/2072-4292/15/9/2451},
+ISSN = {2072-4292},
+ABSTRACT = {The latest advances in super-resolution have been tested with general-purpose images such as faces, landscapes and objects, but mainly unused for the task of super-resolving earth observation images. In this research paper, we benchmark state-of-the-art SR algorithms for distinct EO datasets using both full-reference and no-reference image quality assessment metrics. We also propose a novel Quality Metric Regression Network (QMRNet) that is able to predict the quality (as a no-reference metric) by training on any property of the image (e.g., its resolution, its distortions, etc.) and also able to optimize SR algorithms for a specific metric objective. This work is part of the implementation of the framework IQUAFLOW, which has been developed for the evaluation of image quality and the detection and classification of objects as well as image compression in EO use cases. We integrated our experimentation and tested our QMRNet algorithm on predicting features such as blur, sharpness, snr, rer and ground sampling distance and obtained validation medRs below 1.0 (out of N = 50) and recall rates above 95%. The overall benchmark shows promising results for LIIF, CAR and MSRN and also the potential use of QMRNet as a loss for optimizing SR predictions. Due to its simplicity, QMRNet could also be used for other use cases and image domains, as its architecture and data processing is fully scalable.},
+DOI = {10.3390/rs15092451}
 }
 @article{galles2022,
   title={IQUAFLOW: A NEW FRAMEWORK TO MEASURE IMAGE QUALITY},
