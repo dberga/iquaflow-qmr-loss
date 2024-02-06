@@ -5,7 +5,7 @@ Check [QMRNet's article](https://www.mdpi.com/2072-4292/15/9/2451) and [IQUAFLOW
 
 - Note: Use any our shell scripts to train MSRN with QMR+[rer](train_new_rer.sh),[snr](train_new_snr.sh),[blur](train_new_sigma.sh),[sharpness](train_new_sharpness.sh),[gsr](train_new_scale.sh) to run the use case (train and validate the network). Also you can train and validate with the original [vanilla MSRN](train_new_vanilla_hd.sh).
 
-- The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo) and [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr).
+- The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo), [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr) and [QMRNet standalone code](https://github.com/satellogic/iquaflow/tree/main/iquaflow/quality_metrics).
 
 # MSRN optimization
 
@@ -58,6 +58,10 @@ ________________________________________________________________________________
         The dataset is downloaded with all the results of executing the dataset modifiers already generated. This allows the user to freely skip the `.execute` as well as the `apply_metric_per_run` which __take long time__. Optionally, you can remove the pre-executed records folder (`./mlruns `) for a fresh start.
         
 Note: make sure to replace "YOUR_GIT_TOKEN" to your github access token, also in [Dockerfile](Dockerfile).
+
+# Design and Train the QMRNet (regressor.py)
+
+In [QMRNet standalone code](https://github.com/satellogic/iquaflow/tree/main/iquaflow/quality_metrics) you can find several scripts for training and testing the QMRNet, mainly integrated in `regressor.py`. Using `run_spec.sh` you can specify any of the `cfgs\` folder where the architecture design and hyperparameters are defined. You can create new versions by adding new `.cfg` files.
 
 # Cite
 
