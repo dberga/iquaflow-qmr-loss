@@ -1,11 +1,11 @@
 ![](https://github.com/satellogic/iquaflow/blob/main/docs/source/iquaflow_logo_mini.png)
-Check [QMRNet's article](https://www.mdpi.com/2072-4292/15/9/2451) and [IQUAFLOW's preprint](https://arxiv.org/abs/2210.13269) documentation
+Check [QMRNet's Remote Sensing article](https://www.mdpi.com/2072-4292/15/9/2451) and [iquaflow's JSTARS article](https://ieeexplore.ieee.org/abstract/document/10356628) for further documentation. You also can [install iquaflow with pip](https://pypi.org/project/iquaflow/) and look at the [iquaflow's wiki](https://iquaflow.readthedocs.io/en/latest/). 
 
 # IQUAFLOW - QMRNet's Loss for Super Resolution Optimization
 
 - Note: Use any our shell scripts to train MSRN with QMR+[rer](train_new_rer.sh),[snr](train_new_snr.sh),[blur](train_new_sigma.sh),[sharpness](train_new_sharpness.sh),[gsr](train_new_scale.sh) to run the use case (train and validate the network). Also you can train and validate with the original [vanilla MSRN](train_new_vanilla_hd.sh).
 
-- The rest of code is distributed in distinct repos [IQUAFLOW framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo), [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr) and [QMRNet standalone code](https://github.com/satellogic/iquaflow/tree/main/iquaflow/quality_metrics).
+- The rest of code is distributed in distinct repos [iquaflow framework](https://github.com/satellogic/iquaflow), [QMRNet EO Dataset Evaluation Use Case](https://github.com/dberga/iquaflow-qmr-eo), [QMRNet's Super-Resolution Use case](https://github.com/dberga/iquaflow-qmr-sisr) and [QMRNet standalone code](https://github.com/satellogic/iquaflow/tree/main/iquaflow/quality_metrics).
 
 # MSRN optimization
 
